@@ -229,6 +229,9 @@ export class PostieStack extends Stack {
     // The role can only assume the CDK bootstrap roles, and only from the
     // configured repo's main branch. Gated on githubRepo (env or gitignored
     // context) so forks without CD skip it entirely.
+    // NOTE: GitHub's OIDC sub claim embeds immutable ids —
+    // "owner@ownerId/repo@repoId" — so githubRepo must use that form
+    // (find yours: gh api repos/OWNER/REPO --jq '"\(.owner.login)@\(.owner.id)/\(.name)@\(.id)"').
     const githubRepo =
       process.env.POSTIE_GITHUB_REPO ??
       (this.node.tryGetContext('githubRepo') as string | undefined);

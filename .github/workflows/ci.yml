@@ -40,7 +40,7 @@ jobs:
       POSTIE_DOMAIN: ${{ vars.POSTIE_DOMAIN }}
       POSTIE_HOSTED_ZONE: ${{ vars.POSTIE_HOSTED_ZONE }}
       POSTIE_ALERT_EMAIL: ${{ vars.POSTIE_ALERT_EMAIL }}
-      POSTIE_GITHUB_REPO: ${{ github.repository }}
+      POSTIE_GITHUB_REPO: ${{ vars.POSTIE_GITHUB_REPO }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
