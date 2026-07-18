@@ -10,6 +10,16 @@ Each workspace brings its own Mailstream API key (`/postie setup`), so Postie
 never touches the money. All cards go to the workspace's configured address
 (`/postie address`).
 
+## The cards
+
+<p>
+  <img src="docs/cards/text-front.png" width="49%" alt="Text message rendered as a typographic postcard front">
+  <img src="docs/cards/photo-front.jpg" width="49%" alt="Square photo extended to full bleed with a blur-fill backdrop">
+</p>
+<p>
+  <img src="docs/cards/back.png" width="49%" alt="Card back: message, attribution, senders, card number, and a QR code back to the Slack thread — address zone left clear">
+</p>
+
 ## How it works
 
 ```
@@ -130,10 +140,39 @@ every representative message shape (fronts + backs) to
 - No tracking webhooks exist — delivery updates come from Postie polling each
   open card's `status` every 4 hours.
 
+## Engineering notes
+
+- **Exactly-once mail.** Slack's `reaction_added` events carry no totals and
+  arrive at-least-once; the worker treats them as hints, re-reads true counts,
+  and wins the right to send via a DynamoDB conditional write. Failed sends
+  release the lock so a fresh reaction retries.
+- **Deterministic idempotency, end to end.** The message identity hashes into
+  both the Mailstream `Idempotency-Key` (name-based UUID) and
+  content-addressed S3 artwork keys — so a retry produces a byte-identical
+  request and replays the cached response instead of double-mailing.
+- **Zero native binaries.** The whole print pipeline is satori (flexbox → SVG),
+  resvg-wasm, and jimp: Lambda bundles build identically from any host OS, no
+  Docker required.
+- **Renders what Slack renders.** Message text follows Block Kit's own
+  editorial hierarchy (rich_text/section/header content over notification
+  fallbacks, context-block "chrome" demoted), and bot posts are attributed to
+  the human credited in their context block ("— sam · via bot") — no
+  per-bot special cases.
+- **Contract archaeology.** The mail vendor's API reference sits behind a
+  login, so the client's field names, enums, and limits were recovered from
+  live validation-error probing (guaranteed-422 payloads), then verified
+  against a real production order.
+- **Design iteration as a contact sheet.** `npm run gallery` renders ten
+  representative message shapes — long text, emoji, code blocks, wide/square/
+  portrait photos, bot posts — front and back into one HTML page.
+- ES2024, strict TypeScript, NodeNext resolution, Biome, and a
+  credential-free CI (typecheck, tests, lint, full CDK synth).
+
 ## Commands
 
 ```sh
 npm run typecheck
+npm run lint         # Biome (biome check --write to fix)
 npm test             # unit tests; writes sample renders to test/__output__/
 npm run gallery      # full design contact sheet
 npm run deploy       # CloudFormation deploy (uses AWS_PROFILE)
