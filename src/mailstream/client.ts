@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { v5 as uuidv5 } from 'uuid';
 import type { PostalAddress, PostcardSize } from '../core/types';
 
 export interface CreatePostcardInput {
@@ -21,6 +22,9 @@ export interface PostcardResult {
   status: string;
   proofUrl?: string;
 }
+
+/** Fixed namespace so the same message always yields the same idempotency key. */
+const IDEMPOTENCY_NAMESPACE = uuidv5('postie.mail', uuidv5.URL);
 
 export interface MailstreamClient {
   createPostcard(input: CreatePostcardInput): Promise<PostcardResult>;
@@ -84,7 +88,7 @@ export class HttpMailstreamClient implements MailstreamClient {
         Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'Idempotency-Key': deterministicUuid(input.idempotencyKey),
+        'Idempotency-Key': uuidv5(input.idempotencyKey, IDEMPOTENCY_NAMESPACE),
       },
       body: JSON.stringify({
         name: input.description ?? `Postie ${input.idempotencyKey}`,
@@ -146,19 +150,6 @@ function imageHtml(imageUrl: string): string {
     'img{width:100%;height:100%;display:block;object-fit:cover}' +
     `</style></head><body><img src="${imageUrl}"></body></html>`
   );
-}
-
-/**
- * Mailstream requires UUID-format idempotency keys. Hash our stable message
- * key into a name-based UUID (v5-style) so every retry of the same message
- * produces the same key.
- */
-export function deterministicUuid(name: string): string {
-  const hash = createHash('sha1').update('postie:idempotency:').update(name).digest();
-  hash[6] = (hash[6] & 0x0f) | 0x50;
-  hash[8] = (hash[8] & 0x3f) | 0x80;
-  const h = hash.subarray(0, 16).toString('hex');
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
 export function getMailstreamClient(apiKey: string | undefined): MailstreamClient {

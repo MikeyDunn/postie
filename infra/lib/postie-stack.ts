@@ -123,7 +123,10 @@ export class PostieStack extends Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       memorySize: 512,
       timeout: Duration.seconds(10),
-      logRetention: logs.RetentionDays.ONE_MONTH,
+      logGroup: new logs.LogGroup(this, 'ReceiverLogs', {
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: RemovalPolicy.DESTROY,
+      }),
       environment: { ...commonEnv, QUEUE_URL: queue.queueUrl },
     });
     receiver.addToRolePolicy(ssmRead);
@@ -138,7 +141,10 @@ export class PostieStack extends Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       memorySize: 2048, // CPU scales with memory; rendering is CPU-bound
       timeout: Duration.seconds(120),
-      logRetention: logs.RetentionDays.ONE_MONTH,
+      logGroup: new logs.LogGroup(this, 'WorkerLogs', {
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: RemovalPolicy.DESTROY,
+      }),
       environment: {
         ...commonEnv,
         // 'live' calls the real Mailstream API with each workspace's own key.
