@@ -1,12 +1,12 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
-  DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  ScanCommand,
-  UpdateCommand,
-} from '@aws-sdk/lib-dynamodb';
-import { type CardRecord, type CardStatus, CONFIG_DEFAULTS, type TeamConfig } from './types';
+  bindTable,
+  CardEntity,
+  ConfigEntity,
+  CounterEntity,
+  DayEntity,
+  isConditionalFailure,
+} from './entities';
+import { type CardRecord, CONFIG_DEFAULTS, type TeamConfig } from './types';
 
 export class DailyCapExceededError extends Error {
   constructor(cap: number) {
@@ -57,71 +57,38 @@ export interface Store {
   releaseCardNumber(teamId: string): Promise<void>;
 }
 
-const teamPk = (teamId: string) => `TEAM#${teamId}`;
-const cardSk = (channelId: string, messageTs: string) => `CARD#${channelId}#${messageTs}`;
-const daySk = (date: string) => `DAY#${date}`;
-
 const DAY_SECONDS = 24 * 60 * 60;
 
 export class DynamoStore implements Store {
-  private doc: DynamoDBDocumentClient;
-  constructor(private table: string = requireTable()) {
-    this.doc = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
-      marshallOptions: { removeUndefinedValues: true },
-    });
+  constructor() {
+    bindTable();
   }
 
   async getTeamConfig(teamId: string): Promise<TeamConfig> {
-    const res = await this.doc.send(
-      new GetCommand({ TableName: this.table, Key: { pk: teamPk(teamId), sk: 'CONFIG' } }),
-    );
-    const item = res.Item ?? {};
-    return { ...CONFIG_DEFAULTS, ...item, teamId } as TeamConfig;
+    const { data } = await ConfigEntity.get({ teamId }).go();
+    return { ...CONFIG_DEFAULTS, ...(data ?? {}), teamId } as TeamConfig;
   }
 
   async updateTeamConfig(teamId: string, patch: Partial<TeamConfig>): Promise<void> {
-    const entries = Object.entries(patch).filter(([, v]) => v !== undefined);
-    if (entries.length === 0) return;
-    const names: Record<string, string> = {};
-    const values: Record<string, unknown> = {};
-    const sets = entries.map(([k, v], i) => {
-      names[`#k${i}`] = k;
-      values[`:v${i}`] = v;
-      return `#k${i} = :v${i}`;
-    });
-    await this.doc.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: { pk: teamPk(teamId), sk: 'CONFIG' },
-        UpdateExpression: `SET ${sets.join(', ')}`,
-        ExpressionAttributeNames: names,
-        ExpressionAttributeValues: values,
-      }),
-    );
+    const defined = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    if (Object.keys(defined).length === 0) return;
+    await ConfigEntity.upsert({ teamId, ...defined }).go();
   }
 
   async acquireCardLock(teamId: string, channelId: string, messageTs: string): Promise<boolean> {
     try {
-      await this.doc.send(
-        new PutCommand({
-          TableName: this.table,
-          Item: {
-            pk: teamPk(teamId),
-            sk: cardSk(channelId, messageTs),
-            teamId,
-            channelId,
-            messageTs,
-            status: 'sending' satisfies CardStatus,
-            startedAt: new Date().toISOString(),
-          },
-          ConditionExpression: 'attribute_not_exists(pk) OR #status = :failed',
-          ExpressionAttributeNames: { '#status': 'status' },
-          ExpressionAttributeValues: { ':failed': 'failed' },
-        }),
-      );
+      await CardEntity.put({
+        teamId,
+        channelId,
+        messageTs,
+        status: 'sending',
+        startedAt: new Date().toISOString(),
+      })
+        .where((a, op) => `${op.notExists(a.status)} OR ${op.eq(a.status, 'failed')}`)
+        .go();
       return true;
     } catch (err) {
-      if ((err as Error).name === 'ConditionalCheckFailedException') return false;
+      if (isConditionalFailure(err)) return false;
       throw err;
     }
   }
@@ -132,15 +99,9 @@ export class DynamoStore implements Store {
     messageTs: string,
     error?: string,
   ): Promise<void> {
-    await this.doc.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: { pk: teamPk(teamId), sk: cardSk(channelId, messageTs) },
-        UpdateExpression: 'SET #status = :failed, #error = :error',
-        ExpressionAttributeNames: { '#status': 'status', '#error': 'error' },
-        ExpressionAttributeValues: { ':failed': 'failed', ':error': error ?? 'unknown' },
-      }),
-    );
+    await CardEntity.update({ teamId, channelId, messageTs })
+      .set({ status: 'failed', error: error ?? 'unknown' })
+      .go();
   }
 
   async markCardSent(
@@ -149,35 +110,28 @@ export class DynamoStore implements Store {
     messageTs: string,
     info: { postcardId: string; proofUrl?: string },
   ): Promise<void> {
-    await this.doc.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: { pk: teamPk(teamId), sk: cardSk(channelId, messageTs) },
-        UpdateExpression:
-          'SET #status = :sent, postcardId = :pid, proofUrl = :proof, sentAt = :now REMOVE #error',
-        ExpressionAttributeNames: { '#status': 'status', '#error': 'error' },
-        ExpressionAttributeValues: {
-          ':sent': 'sent',
-          ':pid': info.postcardId,
-          ':proof': info.proofUrl ?? null,
-          ':now': new Date().toISOString(),
-        },
-      }),
-    );
+    await CardEntity.update({ teamId, channelId, messageTs })
+      .set({
+        status: 'sent',
+        postcardId: info.postcardId,
+        sentAt: new Date().toISOString(),
+        ...(info.proofUrl ? { proofUrl: info.proofUrl } : {}),
+      })
+      .remove(['error'])
+      .go();
   }
 
   async listTrackedCards(): Promise<CardRecord[]> {
-    // Scan is fine at Postie's scale (a few cards/day, 30-day tracking window).
-    const res = await this.doc.send(
-      new ScanCommand({
-        TableName: this.table,
-        FilterExpression:
-          'begins_with(sk, :card) AND #st = :sent AND attribute_not_exists(trackingDone)',
-        ExpressionAttributeNames: { '#st': 'status' },
-        ExpressionAttributeValues: { ':card': 'CARD#', ':sent': 'sent' },
-      }),
-    );
-    return (res.Items ?? []) as unknown as CardRecord[];
+    const cards: CardRecord[] = [];
+    let cursor: string | undefined;
+    do {
+      const page: { data: CardRecord[]; cursor: string | null } = await CardEntity.scan
+        .where((a, op) => `${op.eq(a.status, 'sent')} AND ${op.notExists(a.trackingDone)}`)
+        .go({ cursor });
+      cards.push(...page.data);
+      cursor = page.cursor ?? undefined;
+    } while (cursor);
+    return cards;
   }
 
   async updateCardTracking(
@@ -186,102 +140,52 @@ export class DynamoStore implements Store {
     messageTs: string,
     info: { mailstreamStatus: string; done: boolean },
   ): Promise<void> {
-    await this.doc.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: { pk: teamPk(teamId), sk: cardSk(channelId, messageTs) },
-        UpdateExpression: info.done
-          ? 'SET mailstreamStatus = :ms, trackingDone = :done'
-          : 'SET mailstreamStatus = :ms',
-        ExpressionAttributeValues: info.done
-          ? { ':ms': info.mailstreamStatus, ':done': true }
-          : { ':ms': info.mailstreamStatus },
-      }),
-    );
+    await CardEntity.update({ teamId, channelId, messageTs })
+      .set({
+        mailstreamStatus: info.mailstreamStatus,
+        ...(info.done ? { trackingDone: true } : {}),
+      })
+      .go();
   }
 
   async incrementDailyCount(teamId: string, date: string, cap: number): Promise<number> {
     try {
-      const res = await this.doc.send(
-        new UpdateCommand({
-          TableName: this.table,
-          Key: { pk: teamPk(teamId), sk: daySk(date) },
-          UpdateExpression: 'ADD cnt :one SET #ttl = if_not_exists(#ttl, :ttl)',
-          ConditionExpression: 'attribute_not_exists(cnt) OR cnt < :cap',
-          ExpressionAttributeNames: { '#ttl': 'ttl' },
-          ExpressionAttributeValues: {
-            ':one': 1,
-            ':cap': cap,
-            ':ttl': Math.floor(Date.now() / 1000) + 40 * DAY_SECONDS,
-          },
-          ReturnValues: 'UPDATED_NEW',
-        }),
-      );
-      return (res.Attributes?.cnt as number) ?? 1;
+      const { data } = await DayEntity.update({ teamId, date })
+        .add({ cnt: 1 })
+        .set({ ttl: Math.floor(Date.now() / 1000) + 40 * DAY_SECONDS })
+        .where((a, op) => `${op.notExists(a.cnt)} OR ${op.lt(a.cnt, cap)}`)
+        .go({ response: 'updated_new' });
+      return data?.cnt ?? 1;
     } catch (err) {
-      if ((err as Error).name === 'ConditionalCheckFailedException') {
-        throw new DailyCapExceededError(cap);
-      }
+      if (isConditionalFailure(err)) throw new DailyCapExceededError(cap);
       throw err;
     }
   }
 
   async decrementDailyCount(teamId: string, date: string): Promise<void> {
-    await this.doc.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: { pk: teamPk(teamId), sk: daySk(date) },
-        UpdateExpression: 'ADD cnt :minus',
-        ExpressionAttributeValues: { ':minus': -1 },
-      }),
-    );
+    await DayEntity.update({ teamId, date }).subtract({ cnt: 1 }).go();
   }
 
   async getDailyCount(teamId: string, date: string): Promise<number> {
-    const res = await this.doc.send(
-      new GetCommand({ TableName: this.table, Key: { pk: teamPk(teamId), sk: daySk(date) } }),
-    );
-    return (res.Item?.cnt as number) ?? 0;
+    const { data } = await DayEntity.get({ teamId, date }).go();
+    return data?.cnt ?? 0;
   }
 
   async getCardTotal(teamId: string): Promise<number> {
-    const res = await this.doc.send(
-      new GetCommand({ TableName: this.table, Key: { pk: teamPk(teamId), sk: 'COUNTER' } }),
-    );
-    return (res.Item?.total as number) ?? 0;
+    const { data } = await CounterEntity.get({ teamId }).go();
+    return data?.total ?? 0;
   }
 
   async allocateCardNumber(teamId: string): Promise<number> {
-    const res = await this.doc.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: { pk: teamPk(teamId), sk: 'COUNTER' },
-        UpdateExpression: 'ADD #t :one',
-        ExpressionAttributeNames: { '#t': 'total' },
-        ExpressionAttributeValues: { ':one': 1 },
-        ReturnValues: 'UPDATED_NEW',
-      }),
-    );
-    return (res.Attributes?.total as number) ?? 1;
+    const { data } = await CounterEntity.update({ teamId })
+      .add({ total: 1 })
+      .go({ response: 'updated_new' });
+    return data?.total ?? 1;
   }
 
   async releaseCardNumber(teamId: string): Promise<void> {
-    await this.doc.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: { pk: teamPk(teamId), sk: 'COUNTER' },
-        UpdateExpression: 'ADD #t :minus',
-        ExpressionAttributeNames: { '#t': 'total' },
-        ExpressionAttributeValues: { ':minus': -1 },
-      }),
-    );
+    await CounterEntity.update({ teamId }).subtract({ total: 1 }).go();
   }
-}
-
-function requireTable(): string {
-  const t = process.env.TABLE_NAME;
-  if (!t) throw new Error('TABLE_NAME is not set');
-  return t;
 }
 
 /** In-memory Store for tests. Same contract as DynamoStore, no AWS. */

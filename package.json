@@ -26,6 +26,7 @@
     "@aws-sdk/lib-dynamodb": "^3.1086.0",
     "@resvg/resvg-wasm": "^2.6.2",
     "@slack/bolt": "^4.7.3",
+    "electrodb": "^3.9.1",
     "jimp": "^1.6.1",
     "node-emoji": "^2.2.0",
     "qrcode": "^1.5.4",
