@@ -103,4 +103,4 @@ Work phases in order; check items off as they land.
   Mailstream keys KMS-encrypted in DynamoDB (`kms:`/`plain:` prefix scheme —
   `plain:` is the no-KMS test path only).
 - Brand: `assets/postcard-emoji.png` is the mark everywhere (Slack emoji, app
-  icon via `scripts/make-emoji.ts`, card fronts/backs via `brandMarkUri`).
+  icon; generator recipe lives in git history), card fronts/backs via `brandMarkUri`.

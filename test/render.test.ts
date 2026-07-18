@@ -10,6 +10,7 @@ import {
   SIZE_SPECS,
   truncateSegments,
 } from '../src/postcard/render';
+import { msg, SENDERS } from './fixtures';
 
 function pngSize(buf: Buffer): { width: number; height: number } {
   // PNG signature (8) + IHDR length/type (8), then width/height as u32be.
@@ -20,12 +21,7 @@ function pngSize(buf: Buffer): { width: number; height: number } {
 const OUT_DIR = path.join(__dirname, '__output__');
 
 function sampleMessage(overrides: Partial<NormalizedMessage> = {}): NormalizedMessage {
-  return {
-    teamId: 'T1',
-    channelId: 'C1',
-    channelName: 'general',
-    messageTs: '1752345600.000100',
-    author: { id: 'U1', name: 'Sam Rivera' },
+  return msg({
     segments: [
       { kind: 'text', text: 'The rooftop garden finally ' },
       { kind: 'text', text: 'bloomed', style: 'bold' },
@@ -35,9 +31,8 @@ function sampleMessage(overrides: Partial<NormalizedMessage> = {}): NormalizedMe
     ],
     plainText:
       'The rooftop garden finally bloomed after three failed summers, @alex called it a miracle.',
-    postedAt: new Date('2026-07-12T18:00:00Z'),
     ...overrides,
-  };
+  });
 }
 
 describe('renderTextCardFront', () => {
@@ -85,13 +80,7 @@ describe('renderBack', () => {
     );
     const png = await renderBack(sampleMessage(), '4x6', {
       includeMessage: true,
-      senders: [
-        { name: 'Sam Rivera' },
-        { name: 'Alex Kim' },
-        { name: 'Jordan Fox' },
-        { name: 'Casey Lee' },
-        { name: 'Robin Diaz' },
-      ],
+      senders: SENDERS,
       cardNumber: 12,
       teamName: 'exampleco',
       qrDataUri,
