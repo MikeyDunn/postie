@@ -12,7 +12,9 @@
     "synth": "cdk synth",
     "deploy": "cdk deploy",
     "deploy:fast": "cdk deploy --hotswap",
-    "gallery": "tsx scripts/gallery.ts"
+    "gallery": "tsx scripts/gallery.ts",
+    "lint": "biome check .",
+    "format": "biome check --write ."
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1086.0",
