@@ -6,7 +6,7 @@ import {
   ScanCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { CardRecord, CardStatus, CONFIG_DEFAULTS, TeamConfig } from './types';
+import { type CardRecord, type CardStatus, CONFIG_DEFAULTS, type TeamConfig } from './types';
 
 export class DailyCapExceededError extends Error {
   constructor(cap: number) {
@@ -25,7 +25,12 @@ export interface Store {
    */
   acquireCardLock(teamId: string, channelId: string, messageTs: string): Promise<boolean>;
   /** Marks the card failed, making the lock re-acquirable. */
-  releaseCardLock(teamId: string, channelId: string, messageTs: string, error?: string): Promise<void>;
+  releaseCardLock(
+    teamId: string,
+    channelId: string,
+    messageTs: string,
+    error?: string,
+  ): Promise<void>;
   markCardSent(
     teamId: string,
     channelId: string,
@@ -121,7 +126,12 @@ export class DynamoStore implements Store {
     }
   }
 
-  async releaseCardLock(teamId: string, channelId: string, messageTs: string, error?: string): Promise<void> {
+  async releaseCardLock(
+    teamId: string,
+    channelId: string,
+    messageTs: string,
+    error?: string,
+  ): Promise<void> {
     await this.doc.send(
       new UpdateCommand({
         TableName: this.table,
@@ -296,7 +306,12 @@ export class MemoryStore implements Store {
     return true;
   }
 
-  async releaseCardLock(teamId: string, channelId: string, messageTs: string, error?: string): Promise<void> {
+  async releaseCardLock(
+    teamId: string,
+    channelId: string,
+    messageTs: string,
+    error?: string,
+  ): Promise<void> {
     const key = `${teamId}/${channelId}/${messageTs}`;
     const card = this.cards.get(key);
     if (card) Object.assign(card, { status: 'failed', error });

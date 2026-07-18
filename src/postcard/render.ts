@@ -1,10 +1,10 @@
+import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import * as fs from 'fs';
+import { Jimp } from 'jimp';
 import * as path from 'path';
 import satori from 'satori';
-import { initWasm, Resvg } from '@resvg/resvg-wasm';
-import { Jimp } from 'jimp';
-import { PostcardSize } from '../core/types';
-import { NormalizedMessage, Segment } from './normalize';
+import type { PostcardSize } from '../core/types';
+import type { NormalizedMessage, Segment } from './normalize';
 
 /**
  * Print dimensions at 300 DPI including 0.125" bleed on each edge
@@ -122,17 +122,8 @@ function img(src: string, size: number, style: Record<string, unknown> = {}): No
 // Emoji (unicode → twemoji images so satori doesn't render tofu)
 // ---------------------------------------------------------------------------
 
-let emojiRegex: RegExp | undefined | null = null; // null = not yet built
-function getEmojiRegex(): RegExp | undefined {
-  if (emojiRegex === null) {
-    try {
-      emojiRegex = new RegExp('\\p{RGI_Emoji}', 'gv');
-    } catch {
-      emojiRegex = undefined; // Node < 20 — emoji render as tofu, non-fatal
-    }
-  }
-  return emojiRegex ?? undefined;
-}
+// \p{RGI_Emoji} needs the 'v' flag (ES2024 / Node 20+).
+const EMOJI_RE = /\p{RGI_Emoji}/gv;
 
 function twemojiUrl(grapheme: string): string {
   const cps = [...grapheme].map((c) => c.codePointAt(0)!);
@@ -150,11 +141,9 @@ const twemojiCache = new Map<string, string | undefined>();
  * or they silently disappear from the render.
  */
 async function collectGraphemeImages(texts: string[]): Promise<Record<string, string>> {
-  const re = getEmojiRegex();
-  if (!re) return {};
   const graphemes = new Set<string>();
   for (const text of texts) {
-    for (const match of text.matchAll(re)) graphemes.add(match[0]);
+    for (const match of text.matchAll(EMOJI_RE)) graphemes.add(match[0]);
   }
   const map: Record<string, string> = {};
   await Promise.all(
@@ -231,8 +220,7 @@ export function truncateSegments(segments: Segment[], maxChars: number = MAX_CHA
   const out: Segment[] = [];
   let used = 0;
   for (const s of segments) {
-    const len =
-      s.kind === 'newline' ? 1 : s.kind === 'emoji' ? 2 : s.text.length;
+    const len = s.kind === 'newline' ? 1 : s.kind === 'emoji' ? 2 : s.text.length;
     if (used + len > maxChars) {
       if (s.kind !== 'newline' && s.kind !== 'emoji') {
         const room = Math.max(0, maxChars - used);
@@ -331,7 +319,11 @@ function segmentNodes(segments: Segment[], base: number, serif: boolean): Node[]
   return nodes;
 }
 
-function avatarNode(author: NormalizedMessage['author'], avatarUri: string | undefined, size: number): Node {
+function avatarNode(
+  author: NormalizedMessage['author'],
+  avatarUri: string | undefined,
+  size: number,
+): Node {
   if (avatarUri) return img(avatarUri, size, { borderRadius: size });
   return h(
     'div',

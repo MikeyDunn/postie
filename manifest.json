@@ -41,10 +41,7 @@
   "settings": {
     "event_subscriptions": {
       "request_url": "https://YOUR-POSTIE-DOMAIN/slack/events",
-      "bot_events": [
-        "reaction_added",
-        "channel_created"
-      ]
+      "bot_events": ["reaction_added", "channel_created"]
     },
     "interactivity": {
       "is_enabled": true,

@@ -1,11 +1,11 @@
 import type { App } from '@slack/bolt';
 import type { WebClient } from '@slack/web-api';
 import { encryptSecret } from '../core/crypto';
-import { JobQueue } from '../core/queue';
-import { Store } from '../core/store';
-import { addressDisplayName, PostalAddress, PostcardSize } from '../core/types';
-import { baseEmojiName } from '../postcard/emoji';
+import type { JobQueue } from '../core/queue';
+import type { Store } from '../core/store';
+import { addressDisplayName, type PostalAddress, type PostcardSize } from '../core/types';
 import { isStubMode } from '../mailstream/client';
+import { baseEmojiName } from '../postcard/emoji';
 
 export interface ListenerDeps {
   store: Store;
@@ -15,7 +15,7 @@ export interface ListenerDeps {
 const HELP = [
   '*Postie* turns messages into real mailed postcards. React with the trigger emoji — when a message collects enough reactions, it prints and mails automatically.',
   '',
-  '`/postie status` — current configuration + today\'s count',
+  "`/postie status` — current configuration + today's count",
   '`/postie setup` — set the Mailstream API key (admins)',
   '`/postie address` — set the mailing address (admins)',
   '`/postie threshold <n>` — reactions needed to send (default 5)',
@@ -26,7 +26,7 @@ const HELP = [
   '`/postie presence <everywhere|invited>` — auto-join all public channels, or only invited ones (admins)',
   '`/postie join-all` — join every public channel now (admins)',
   '',
-  '_Postie only sees reactions in channels it\'s in — everywhere mode removes that footgun; invited mode is the privacy-friendly choice._',
+  "_Postie only sees reactions in channels it's in — everywhere mode removes that footgun; invited mode is the privacy-friendly choice._",
 ].join('\n');
 
 export function registerListeners(app: App, deps: ListenerDeps): void {
@@ -113,7 +113,10 @@ function registerCommand(app: App, deps: ListenerDeps): void {
         if (!(await isAdmin(client, command.user_id))) {
           return reply(':no_entry: Only workspace admins can set the Mailstream API key.');
         }
-        await client.views.open({ trigger_id: command.trigger_id, view: setupModal(command.channel_id) });
+        await client.views.open({
+          trigger_id: command.trigger_id,
+          view: setupModal(command.channel_id),
+        });
         return;
       }
 
@@ -134,13 +137,17 @@ function registerCommand(app: App, deps: ListenerDeps): void {
         if (!(await isAdmin(client, command.user_id))) {
           return reply(':no_entry: Only workspace admins can change the threshold.');
         }
-        return updateNumber(deps, teamId, reply, rest[0], 1, 25, 'threshold', (n) => ({ threshold: n }));
+        return updateNumber(deps, teamId, reply, rest[0], 1, 25, 'threshold', (n) => ({
+          threshold: n,
+        }));
 
       case 'cap':
         if (!(await isAdmin(client, command.user_id))) {
           return reply(':no_entry: Only workspace admins can change the daily cap.');
         }
-        return updateNumber(deps, teamId, reply, rest[0], 1, 50, 'daily cap', (n) => ({ dailyCap: n }));
+        return updateNumber(deps, teamId, reply, rest[0], 1, 50, 'daily cap', (n) => ({
+          dailyCap: n,
+        }));
 
       case 'emoji': {
         if (!(await isAdmin(client, command.user_id))) {
@@ -149,7 +156,9 @@ function registerCommand(app: App, deps: ListenerDeps): void {
         const name = (rest[0] ?? '').replace(/:/g, '').trim();
         if (!name) return reply('Usage: `/postie emoji <name>` (e.g. `/postie emoji postcard`)');
         await deps.store.updateTeamConfig(teamId, { triggerEmoji: name });
-        return reply(`Trigger emoji is now :${name}: — messages need ${(await deps.store.getTeamConfig(teamId)).threshold} of them to mail.`);
+        return reply(
+          `Trigger emoji is now :${name}: — messages need ${(await deps.store.getTeamConfig(teamId)).threshold} of them to mail.`,
+        );
       }
 
       case 'join-all': {
@@ -157,7 +166,9 @@ function registerCommand(app: App, deps: ListenerDeps): void {
           return reply(':no_entry: Only workspace admins can run join-all.');
         }
         await deps.queue.enqueue({ type: 'join_all', teamId, responseUrl: command.response_url });
-        return reply(':hourglass_flowing_sand: Joining all public channels — summary coming shortly.');
+        return reply(
+          ':hourglass_flowing_sand: Joining all public channels — summary coming shortly.',
+        );
       }
 
       case 'here': {
@@ -262,8 +273,15 @@ function setupModal(channelId: string) {
         type: 'input',
         block_id: 'api_key',
         label: { type: 'plain_text', text: 'Mailstream API key' },
-        hint: { type: 'plain_text', text: 'Stored encrypted. Your workspace funds its own postage.' },
-        element: { type: 'plain_text_input', action_id: 'value', placeholder: { type: 'plain_text', text: 'ms_live_…' } },
+        hint: {
+          type: 'plain_text',
+          text: 'Stored encrypted. Your workspace funds its own postage.',
+        },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'value',
+          placeholder: { type: 'plain_text', text: 'ms_live_…' },
+        },
       },
     ],
   };
@@ -271,7 +289,13 @@ function setupModal(channelId: string) {
 
 function addressModal(channelId: string, existing?: PostalAddress) {
   const text = (t: string) => ({ type: 'plain_text' as const, text: t });
-  const input = (blockId: string, label: string, initial?: string, optional = false, placeholder?: string) => ({
+  const input = (
+    blockId: string,
+    label: string,
+    initial?: string,
+    optional = false,
+    placeholder?: string,
+  ) => ({
     type: 'input',
     block_id: blockId,
     optional,
@@ -313,7 +337,12 @@ function registerViews(app: App, deps: ListenerDeps): void {
         mailstreamApiKey: await encryptSecret(apiKey),
       });
     }
-    await confirmEphemeral(client, view.private_metadata, body.user.id, ':lock: Mailstream API key saved (encrypted). Run `/postie status` to check the rest of the setup.');
+    await confirmEphemeral(
+      client,
+      view.private_metadata,
+      body.user.id,
+      ':lock: Mailstream API key saved (encrypted). Run `/postie status` to check the rest of the setup.',
+    );
   });
 
   app.view('postie_address_modal', async ({ ack, view, body, client }) => {

@@ -1,8 +1,8 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import { Jimp } from 'jimp';
+import * as path from 'path';
 import { describe, expect, it } from 'vitest';
-import { NormalizedMessage } from '../src/postcard/normalize';
+import type { NormalizedMessage } from '../src/postcard/normalize';
 import {
   renderBack,
   renderPhotoFront,
@@ -33,7 +33,8 @@ function sampleMessage(overrides: Partial<NormalizedMessage> = {}): NormalizedMe
       { kind: 'mention', text: '@alex' },
       { kind: 'text', text: ' called it a miracle.' },
     ],
-    plainText: 'The rooftop garden finally bloomed after three failed summers, @alex called it a miracle.',
+    plainText:
+      'The rooftop garden finally bloomed after three failed summers, @alex called it a miracle.',
     postedAt: new Date('2026-07-12T18:00:00Z'),
     ...overrides,
   };
@@ -75,10 +76,13 @@ describe('renderPhotoFront', () => {
 describe('renderBack', () => {
   it('renders message, senders, card number, team name, and QR with a clear address zone', async () => {
     const QRCode = await import('qrcode');
-    const qrDataUri = await QRCode.toDataURL('https://example.slack.com/archives/C1/p1752345600000100', {
-      margin: 0,
-      width: 260,
-    });
+    const qrDataUri = await QRCode.toDataURL(
+      'https://example.slack.com/archives/C1/p1752345600000100',
+      {
+        margin: 0,
+        width: 260,
+      },
+    );
     const png = await renderBack(sampleMessage(), '4x6', {
       includeMessage: true,
       senders: [

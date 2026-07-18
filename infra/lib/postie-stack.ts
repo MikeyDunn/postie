@@ -1,32 +1,32 @@
-import * as path from 'path';
 import {
-  CfnOutput,
-  Duration,
-  RemovalPolicy,
-  Stack,
-  StackProps,
-  aws_apigatewayv2 as apigwv2,
-  aws_apigatewayv2_integrations as integrations,
   aws_certificatemanager as acm,
+  aws_apigatewayv2 as apigwv2,
+  CfnOutput,
   aws_cloudwatch as cloudwatch,
   aws_cloudwatch_actions as cwActions,
+  Duration,
   aws_dynamodb as dynamodb,
   aws_events as events,
+  aws_lambda_event_sources as eventsources,
   aws_events_targets as eventTargets,
   aws_iam as iam,
+  aws_apigatewayv2_integrations as integrations,
   aws_kms as kms,
   aws_lambda as lambda,
-  aws_lambda_event_sources as eventsources,
-  aws_lambda_nodejs as nodejs,
   aws_logs as logs,
+  aws_lambda_nodejs as nodejs,
+  RemovalPolicy,
   aws_route53 as route53,
-  aws_route53_targets as targets,
+  Stack,
+  type StackProps,
   aws_s3 as s3,
   aws_sns as sns,
   aws_sns_subscriptions as snsSubs,
   aws_sqs as sqs,
+  aws_route53_targets as targets,
 } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import type { Construct } from 'constructs';
+import * as path from 'path';
 
 const BOT_TOKEN_PARAM = '/postie/slack/bot-token';
 const SIGNING_SECRET_PARAM = '/postie/slack/signing-secret';

@@ -1,9 +1,9 @@
-import type { SQSHandler, SQSBatchItemFailure } from 'aws-lambda';
 import { WebClient } from '@slack/web-api';
+import type { SQSBatchItemFailure, SQSHandler } from 'aws-lambda';
 import { getSlackSecrets } from '../core/secrets';
 import { getStore } from '../core/store';
-import { Job } from '../core/types';
-import { PipelineDeps, processSendJob } from '../postcard/pipeline';
+import type { Job } from '../core/types';
+import { type PipelineDeps, processSendJob } from '../postcard/pipeline';
 import { processTrackAll } from '../postcard/tracker';
 import { processJoinAllJob } from '../slack/autojoin';
 

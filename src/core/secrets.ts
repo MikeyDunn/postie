@@ -1,4 +1,4 @@
-import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
+import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 
 let ssm: SSMClient | undefined;
 const paramCache = new Map<string, string>();

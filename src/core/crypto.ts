@@ -1,4 +1,4 @@
-import { KMSClient, EncryptCommand, DecryptCommand } from '@aws-sdk/client-kms';
+import { DecryptCommand, EncryptCommand, KMSClient } from '@aws-sdk/client-kms';
 
 const KMS_PREFIX = 'kms:';
 const PLAIN_PREFIX = 'plain:';
@@ -31,7 +31,9 @@ export async function decryptSecret(stored: string): Promise<string> {
   }
   if (stored.startsWith(KMS_PREFIX)) {
     const res = await kmsClient().send(
-      new DecryptCommand({ CiphertextBlob: Buffer.from(stored.slice(KMS_PREFIX.length), 'base64') }),
+      new DecryptCommand({
+        CiphertextBlob: Buffer.from(stored.slice(KMS_PREFIX.length), 'base64'),
+      }),
     );
     return Buffer.from(res.Plaintext!).toString('utf8');
   }

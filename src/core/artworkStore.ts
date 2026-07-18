@@ -29,7 +29,10 @@ export async function uploadArtwork(
   if (!bucket) throw new Error('ARTWORK_BUCKET is not set');
   if (!s3) s3 = new S3Client({});
   const mime = sniffMime(image);
-  const hash = createHash('sha256').update(`postie-artwork-v1:${keySeed}`).digest('hex').slice(0, 40);
+  const hash = createHash('sha256')
+    .update(`postie-artwork-v1:${keySeed}`)
+    .digest('hex')
+    .slice(0, 40);
   const key = `${teamId}/${hash}.${mime === 'image/jpeg' ? 'jpg' : 'png'}`;
   await s3.send(
     new PutObjectCommand({

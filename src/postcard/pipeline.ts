@@ -2,11 +2,16 @@ import type { WebClient } from '@slack/web-api';
 import * as QRCode from 'qrcode';
 import { uploadArtwork } from '../core/artworkStore';
 import { decryptSecret } from '../core/crypto';
-import { Store, DailyCapExceededError } from '../core/store';
-import { addressDisplayName, SendJob, TeamConfig } from '../core/types';
+import { DailyCapExceededError, type Store } from '../core/store';
+import { addressDisplayName, type SendJob, type TeamConfig } from '../core/types';
 import { getMailstreamClient, InsufficientPointsError, isStubMode } from '../mailstream/client';
 import { baseEmojiName } from './emoji';
-import { NormalizedMessage, normalizeMessage, resolveUserInfos, SlackMessage } from './normalize';
+import {
+  type NormalizedMessage,
+  normalizeMessage,
+  resolveUserInfos,
+  type SlackMessage,
+} from './normalize';
 import { renderBack, renderPhotoFront, renderTextCardFront } from './render';
 
 export interface PipelineDeps {
@@ -28,11 +33,7 @@ const MAX_ATTEMPTS = 3;
  * `attempt` is the SQS receive count — errors rethrow (so SQS retries) until
  * the final attempt, which reports the failure into the thread instead.
  */
-export async function processSendJob(
-  job: SendJob,
-  deps: PipelineDeps,
-  attempt = 1,
-): Promise<void> {
+export async function processSendJob(job: SendJob, deps: PipelineDeps, attempt = 1): Promise<void> {
   const { store, slack } = deps;
   const { teamId, channelId, messageTs } = job;
 
@@ -61,7 +62,14 @@ export async function processSendJob(
   if (!locked) return;
 
   try {
-    await sendPostcard({ job, config, message, count, reactors: triggerReaction?.users ?? [], deps });
+    await sendPostcard({
+      job,
+      config,
+      message,
+      count,
+      reactors: triggerReaction?.users ?? [],
+      deps,
+    });
   } catch (err) {
     if (err instanceof DailyCapExceededError) {
       await store.releaseCardLock(teamId, channelId, messageTs, err.message);
@@ -210,7 +218,16 @@ async function sendPostcard(ctx: {
     proofUrl: result.proofUrl,
   });
 
-  await postCardPreview(deps, { normalized, config, count, cardNumber, result, front, back, photoFront });
+  await postCardPreview(deps, {
+    normalized,
+    config,
+    count,
+    cardNumber,
+    result,
+    front,
+    back,
+    photoFront,
+  });
 }
 
 async function postCardPreview(

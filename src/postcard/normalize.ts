@@ -2,7 +2,7 @@ import type { WebClient } from '@slack/web-api';
 import * as nodeEmoji from 'node-emoji';
 import { blocksToTokens } from './blocks';
 import { getCustomEmojiMap, resolveCustomEmojiUrl } from './emoji';
-import { Token, TextStyle, tokenize } from './mrkdwn';
+import { type TextStyle, type Token, tokenize } from './mrkdwn';
 
 /**
  * Renderer-facing segments: everything the tokenizer found, with Slack IDs
@@ -142,11 +142,14 @@ function guessMime(url: string): string {
 }
 
 function extractImage(message: SlackMessage): NormalizedMessage['image'] {
-  const file = (message.files ?? []).find(
-    (f) => f.mimetype?.startsWith('image/') && f.url_private,
-  );
+  const file = (message.files ?? []).find((f) => f.mimetype?.startsWith('image/') && f.url_private);
   if (file) {
-    return { url: file.url_private!, mimetype: file.mimetype!, title: file.title, requiresAuth: true };
+    return {
+      url: file.url_private!,
+      mimetype: file.mimetype!,
+      title: file.title,
+      requiresAuth: true,
+    };
   }
   // Bot posts (AI image generators etc.) attach images as blocks, not files.
   for (const block of message.blocks ?? []) {
@@ -164,7 +167,6 @@ function extractImage(message: SlackMessage): NormalizedMessage['image'] {
   return undefined;
 }
 
-
 export async function normalizeMessage(
   client: WebClient,
   opts: { teamId: string; channelId: string; message: SlackMessage },
@@ -178,16 +180,14 @@ export async function normalizeMessage(
   // Card text hierarchy: the author's words (content blocks) → the bot's own
   // one-line summary (top-level text) → context-block chrome as last resort.
   const { content, chrome } = blocksToTokens(message.blocks);
-  const tokens = content.length
-    ? content
-    : message.text?.trim()
-      ? tokenize(message.text)
-      : chrome;
+  const tokens = content.length ? content : message.text?.trim() ? tokenize(message.text) : chrome;
 
   let onBehalfOf: NormalizedMessage['onBehalfOf'];
   if (!message.user) {
     const mentioned = [
-      ...new Set(chrome.filter((t) => t.kind === 'user').map((t) => (t as { userId: string }).userId)),
+      ...new Set(
+        chrome.filter((t) => t.kind === 'user').map((t) => (t as { userId: string }).userId),
+      ),
     ];
     if (mentioned.length === 1) {
       onBehalfOf = { id: mentioned[0], ...(await getUserInfo(client, mentioned[0], userCache)) };

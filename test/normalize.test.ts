@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeMessage, SlackMessage } from '../src/postcard/normalize';
+import { normalizeMessage, type SlackMessage } from '../src/postcard/normalize';
 
 /**
  * Fake WebClient covering the calls normalizeMessage makes — no network.

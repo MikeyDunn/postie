@@ -35,5 +35,4 @@ describe('MemoryStore (contract shared with DynamoStore)', () => {
     await store.allocateCardNumber('T1');
     expect(await store.getCardTotal('T1')).toBe(2);
   });
-
 });

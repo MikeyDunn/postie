@@ -1,4 +1,4 @@
-import { Token, tokenize } from './mrkdwn';
+import { type Token, tokenize } from './mrkdwn';
 
 /**
  * Converts Block Kit blocks into the same Token stream the mrkdwn tokenizer
@@ -119,7 +119,15 @@ function richInlineTokens(elements: Array<Record<string, any>>): Token[] {
     switch (e.type) {
       case 'text': {
         const s = e.style ?? {};
-        const style = s.code ? 'code' : s.bold ? 'bold' : s.italic ? 'italic' : s.strike ? 'strike' : undefined;
+        const style = s.code
+          ? 'code'
+          : s.bold
+            ? 'bold'
+            : s.italic
+              ? 'italic'
+              : s.strike
+                ? 'strike'
+                : undefined;
         const lines = String(e.text ?? '').split('\n');
         lines.forEach((line, i) => {
           if (i) out.push({ kind: 'newline' });

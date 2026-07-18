@@ -69,10 +69,14 @@ function tokenizeInline(line: string, out: Token[]): void {
     const [, angle, emoji, bold, italic, strike, code] = m;
     if (angle !== undefined) out.push(parseAngle(angle));
     else if (emoji !== undefined) out.push({ kind: 'emoji', name: emoji });
-    else if (bold !== undefined) out.push({ kind: 'text', text: unescapeEntities(bold), style: 'bold' });
-    else if (italic !== undefined) out.push({ kind: 'text', text: unescapeEntities(italic), style: 'italic' });
-    else if (strike !== undefined) out.push({ kind: 'text', text: unescapeEntities(strike), style: 'strike' });
-    else if (code !== undefined) out.push({ kind: 'text', text: unescapeEntities(code), style: 'code' });
+    else if (bold !== undefined)
+      out.push({ kind: 'text', text: unescapeEntities(bold), style: 'bold' });
+    else if (italic !== undefined)
+      out.push({ kind: 'text', text: unescapeEntities(italic), style: 'italic' });
+    else if (strike !== undefined)
+      out.push({ kind: 'text', text: unescapeEntities(strike), style: 'strike' });
+    else if (code !== undefined)
+      out.push({ kind: 'text', text: unescapeEntities(code), style: 'code' });
     last = m.index + m[0].length;
   }
   if (last < line.length) {

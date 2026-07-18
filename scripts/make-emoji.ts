@@ -1,10 +1,11 @@
 /* One-off: renders the :postcard: emoji for Slack. Run from the postie repo:
  *   npx tsx /path/to/make-emoji.ts
  */
+
+import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import * as fs from 'fs';
 import * as path from 'path';
 import satori from 'satori';
-import { initWasm, Resvg } from '@resvg/resvg-wasm';
 
 const REPO = path.join(__dirname, '..');
 const ink = '#2A241B';

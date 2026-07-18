@@ -1,5 +1,5 @@
-import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
-import { Job } from './types';
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+import type { Job } from './types';
 
 export interface JobQueue {
   enqueue(job: Job): Promise<void>;

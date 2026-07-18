@@ -1,5 +1,5 @@
 import type { WebClient } from '@slack/web-api';
-import { JoinAllJob } from '../core/types';
+import type { JoinAllJob } from '../core/types';
 
 /**
  * Slack only delivers reaction events for conversations the bot is in, so

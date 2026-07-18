@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { PostalAddress, PostcardSize } from '../core/types';
+import type { PostalAddress, PostcardSize } from '../core/types';
 
 export interface CreatePostcardInput {
   size: PostcardSize;
@@ -74,8 +74,7 @@ export class StubMailstreamClient implements MailstreamClient {
 export class HttpMailstreamClient implements MailstreamClient {
   constructor(
     private apiKey: string,
-    private baseUrl: string = process.env.MAILSTREAM_BASE_URL ??
-      'https://my.mailstream.app/api/v1',
+    private baseUrl: string = process.env.MAILSTREAM_BASE_URL ?? 'https://my.mailstream.app/api/v1',
   ) {}
 
   async createPostcard(input: CreatePostcardInput): Promise<PostcardResult> {

@@ -1,6 +1,6 @@
 import { decryptSecret } from '../core/crypto';
 import { getMailstreamClient, isStubMode } from '../mailstream/client';
-import { PipelineDeps } from './pipeline';
+import type { PipelineDeps } from './pipeline';
 import { statusLine, TERMINAL_STATUSES } from './statusLines';
 
 const MAX_TRACK_DAYS = 30;
@@ -23,9 +23,7 @@ export async function processTrackAll(deps: PipelineDeps): Promise<void> {
   for (const card of cards) {
     if (!card.postcardId) continue;
 
-    const ageDays = card.sentAt
-      ? (Date.now() - new Date(card.sentAt).getTime()) / 86_400_000
-      : 0;
+    const ageDays = card.sentAt ? (Date.now() - new Date(card.sentAt).getTime()) / 86_400_000 : 0;
     if (ageDays > MAX_TRACK_DAYS) {
       await deps.store.updateCardTracking(card.teamId, card.channelId, card.messageTs, {
         mailstreamStatus: card.mailstreamStatus ?? 'unknown',

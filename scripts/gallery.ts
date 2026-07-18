@@ -8,8 +8,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as QRCode from 'qrcode';
-import { NormalizedMessage } from '../src/postcard/normalize';
-import { renderBack, renderPhotoFront, renderTextCardFront, BackExtras } from '../src/postcard/render';
+import type { NormalizedMessage } from '../src/postcard/normalize';
+import {
+  type BackExtras,
+  renderBack,
+  renderPhotoFront,
+  renderTextCardFront,
+} from '../src/postcard/render';
 
 const OUT = path.join(__dirname, '..', 'test', '__output__', 'gallery');
 
@@ -96,7 +101,8 @@ const FIXTURES: Fixture[] = [
         { kind: 'text', text: ': ' },
         { kind: 'codeblock', text: '- if (retries > MAX)\n+ if (retries >= MAX)' },
       ],
-      plainText: 'after 3 hours the fix was one character: - if (retries > MAX) + if (retries >= MAX)',
+      plainText:
+        'after 3 hours the fix was one character: - if (retries > MAX) + if (retries >= MAX)',
     }),
   },
   {
@@ -132,8 +138,11 @@ const FIXTURES: Fixture[] = [
       channelName: 'gen-art',
       author: { name: 'clank' },
       onBehalfOf: { id: 'U9', name: 'samiswoi bart' },
-      segments: text('✨ Generated image for: "suddenly i dancing severance style with the furry orcas"'),
-      plainText: '✨ Generated image for: "suddenly i dancing severance style with the furry orcas"',
+      segments: text(
+        '✨ Generated image for: "suddenly i dancing severance style with the furry orcas"',
+      ),
+      plainText:
+        '✨ Generated image for: "suddenly i dancing severance style with the furry orcas"',
     }),
     back: { senders: [{ name: 'samiswoi bart' }] },
   },
