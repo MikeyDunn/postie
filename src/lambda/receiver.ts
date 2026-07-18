@@ -4,7 +4,8 @@ import { getSlackSecrets } from '../core/secrets';
 import { getStore } from '../core/store';
 import { registerListeners } from '../slack/listeners';
 
-type AwsHandler = (event: unknown, context: unknown, callback: unknown) => Promise<unknown>;
+// Bolt 5: the AwsLambdaReceiver handler is 2-arg promise-based (no callback).
+type AwsHandler = (event: unknown, context: unknown) => Promise<unknown>;
 
 let cached: Promise<AwsHandler> | undefined;
 
@@ -25,7 +26,7 @@ async function init(): Promise<AwsHandler> {
   return receiver.start() as unknown as Promise<AwsHandler>;
 }
 
-export const handler = async (event: unknown, context: unknown, callback: unknown) => {
+export const handler = async (event: unknown, context: unknown) => {
   cached ??= init();
-  return (await cached)(event, context, callback);
+  return (await cached)(event, context);
 };

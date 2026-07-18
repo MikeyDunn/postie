@@ -25,7 +25,7 @@
     "@aws-sdk/client-ssm": "^3.1090.0",
     "@aws-sdk/lib-dynamodb": "^3.1090.0",
     "@resvg/resvg-wasm": "^2.6.2",
-    "@slack/bolt": "^4.7.3",
+    "@slack/bolt": "^5.0.0",
     "electrodb": "^3.9.1",
     "jimp": "^1.6.1",
     "node-emoji": "^2.2.0",

@@ -81,7 +81,11 @@ function registerCommand(app: App, deps: ListenerDeps): void {
     const [sub = '', ...rest] = command.text.trim().split(/\s+/);
     const teamId = command.team_id;
 
-    const reply = (text: string) => respond({ response_type: 'ephemeral', text });
+    // Bolt 5: respond() resolves to a fetch Response — swallow it so
+    // listeners keep the required Promise<void> shape.
+    const reply = async (text: string): Promise<void> => {
+      await respond({ response_type: 'ephemeral', text });
+    };
 
     switch (sub.toLowerCase()) {
       case '':
