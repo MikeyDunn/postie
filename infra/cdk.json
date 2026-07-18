@@ -1,5 +1,5 @@
 {
-  "app": "npx tsx infra/bin/postie.ts",
+  "app": "npx tsx bin/postie.ts",
   "context": {
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,

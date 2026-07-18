@@ -70,7 +70,7 @@ assets/         Inter + Source Serif 4 statics, the Postie mark, app icon
 ### 1. Deploy AWS
 
 Bring your own AWS account. Personal values live in the **gitignored**
-`cdk.context.json` — create it with your custom domain (optional; omit both
+`infra/cdk.context.json` — create it with your custom domain (optional; omit both
 keys to use the raw API Gateway URL) and alert email:
 
 ```json
@@ -98,7 +98,7 @@ out the idle recycle or nudge the functions (any redeploy works).
 ### 2. Create the Slack app
 
 1. [api.slack.com/apps](https://api.slack.com/apps) → *Create New App* → *From
-   a manifest* → paste `manifest.json` with `YOUR-POSTIE-DOMAIN` swapped for
+   a manifest* → paste `config/slack-manifest.json` with `YOUR-POSTIE-DOMAIN` swapped for
    the deployed `SlackRequestUrl` host.
 2. Install to the workspace; put the **bot token** and **signing secret** into
    the SSM parameters above (they're read at Lambda cold start).

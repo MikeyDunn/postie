@@ -95,7 +95,7 @@ Work phases in order; check items off as they land.
 - Deployment-specific values (AWS profile/account, domain, Slack team id,
   live card ids, Mailstream balance) live in gitignored CLAUDE.local.md —
   the repo itself is deployment-agnostic: domain/hostedZone/alertEmail come
-  from the gitignored cdk.context.json, everything else from SSM/DynamoDB.
+  from the gitignored infra/cdk.context.json, everything else from SSM/DynamoDB.
 - Single-workspace by design for now; store is keyed by `team_id` everywhere,
   so multi-workspace = OAuth + installation store (TODO Phase 2), not a
   refactor.

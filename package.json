@@ -9,9 +9,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "synth": "cdk synth",
-    "deploy": "cdk deploy",
-    "deploy:fast": "cdk deploy --hotswap",
+    "synth": "cd infra && cdk synth",
+    "deploy": "cd infra && cdk deploy",
+    "deploy:fast": "cd infra && cdk deploy --hotswap",
     "gallery": "tsx scripts/gallery.ts",
     "lint": "biome check .",
     "format": "biome check --write ."

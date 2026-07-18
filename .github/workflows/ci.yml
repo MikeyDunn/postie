@@ -21,3 +21,4 @@ jobs:
       # No AWS credentials needed: without domain context there are no
       # Route53 lookups, so the full stack synthesizes offline.
       - run: npx cdk synth --quiet
+        working-directory: infra
