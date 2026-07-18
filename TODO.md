@@ -43,6 +43,14 @@ each phase is independently shippable. See CLAUDE.md for design invariants.
       distribution does NOT require Marketplace review).
 - [ ] Optional: App Home tab with setup status.
 
+## Phase 3.5 — CD via GitHub Actions (own careful pass)
+
+- [ ] OIDC federation (aws-actions/configure-aws-credentials, no long-lived
+      keys) + deploy-on-main workflow. GOTCHA discovered: the gitignored
+      infra/cdk.context.json means an Actions deploy would synth WITHOUT the
+      domain and DELETE the cert/DNS — the stack must first read
+      domain/hostedZone from env vars (like alertEmail) fed by Actions vars.
+
 ## Phase 4 — Slack Marketplace (only if directory discoverability matters)
 
 - [ ] Privacy policy + terms + support pages (message content flows to

@@ -22,19 +22,18 @@ never touches the money. All cards go to the workspace's configured address
 
 ## How it works
 
-```
-Slack ──▶ API Gateway ──▶ receiver Lambda (Bolt: verify, ack <3s, enqueue)
-                                │
-                                ▼ SQS (retries ×3 → DLQ → alarm → email)
-        EventBridge (4h) ──▶ worker Lambda
-        "track_all"          ├─ send: reactions.get → threshold?
-                             │   → DynamoDB conditional write (exactly-once)
-                             │   → normalize (blocks → segments, names resolved)
-                             │   → render (satori + resvg-wasm + jimp, no native deps)
-                             │   → S3 artwork (public capability URLs)
-                             │   → Mailstream createPostcard (idempotent)
-                             │   → front/back preview into the thread
-                             └─ track_all: poll card status → thread updates
+```mermaid
+flowchart LR
+  slack["Slack workspace<br/>reactions · commands"] -->|"signed HTTPS"| gw["API Gateway"]
+  gw --> receiver["Receiver λ<br/>Bolt: verify, ack &lt;3s"]
+  receiver --> q[["SQS jobs"]]
+  tick["EventBridge<br/>4h tracking tick"] --> q
+  q -->|"3 failures"| dlq[["DLQ"]] --> alarm["Alarm → email"]
+  q --> worker["Worker λ<br/>render · send · track"]
+  worker --> ddb[("DynamoDB<br/>ElectroDB single table")]
+  worker --> s3[("S3 artwork")]
+  worker --> ms["Mailstream API"] --> usps["USPS 📬"]
+  worker -->|"preview + delivery updates"| slack
 ```
 
 **Card grammar — front is the moment, back is the information:**
