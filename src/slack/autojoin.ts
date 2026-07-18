@@ -50,3 +50,19 @@ export async function processJoinAllJob(job: JoinAllJob, slack: WebClient): Prom
     console.error('[postie] join-all summary failed:', err);
   }
 }
+
+/** Final-attempt confession — the admin is otherwise left waiting forever. */
+export async function reportJoinAllFailure(responseUrl: string): Promise<void> {
+  try {
+    await fetch(responseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        response_type: 'ephemeral',
+        text: ':warning: join-all hit an error partway through — some channels may not be joined. Run `/postie join-all` again to finish.',
+      }),
+    });
+  } catch (err) {
+    console.error('[postie] could not report join-all failure:', err);
+  }
+}

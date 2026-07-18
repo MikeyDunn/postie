@@ -5,7 +5,7 @@ import { getStore } from '../core/store';
 import type { Job } from '../core/types';
 import { type PipelineDeps, processSendJob } from '../postcard/pipeline';
 import { processTrackAll } from '../postcard/tracker';
-import { processJoinAllJob } from '../slack/autojoin';
+import { processJoinAllJob, reportJoinAllFailure } from '../slack/autojoin';
 
 let depsPromise: Promise<PipelineDeps> | undefined;
 
@@ -35,7 +35,16 @@ export const handler: SQSHandler = async (event) => {
     try {
       const job = JSON.parse(record.body) as Job;
       if (job.type === 'join_all') {
-        await processJoinAllJob(job, deps.slack);
+        try {
+          await processJoinAllJob(job, deps.slack);
+        } catch (err) {
+          // Surface to the admin who ran the command instead of dying silently.
+          if (attempt >= 3) {
+            await reportJoinAllFailure(job.responseUrl);
+            continue;
+          }
+          throw err;
+        }
       } else if (job.type === 'track_all') {
         await processTrackAll(deps);
       } else {
