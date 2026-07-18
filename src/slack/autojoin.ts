@@ -8,19 +8,18 @@ import type { JoinAllJob } from '../core/types';
  * not allow self-joining those, by design.
  */
 export async function processJoinAllJob(job: JoinAllJob, slack: WebClient): Promise<void> {
-  let cursor: string | undefined;
   let joined = 0;
   let already = 0;
   let failed = 0;
 
-  do {
-    const res = await slack.conversations.list({
-      types: 'public_channel',
-      exclude_archived: true,
-      limit: 200,
-      cursor,
-    });
-    for (const channel of res.channels ?? []) {
+  for await (const page of slack.paginate('conversations.list', {
+    types: 'public_channel',
+    exclude_archived: true,
+    limit: 200,
+  })) {
+    for (const channel of (
+      page as { channels?: Array<{ id?: string; name?: string; is_member?: boolean }> }
+    ).channels ?? []) {
       if (!channel.id) continue;
       if (channel.is_member) {
         already++;
@@ -34,8 +33,7 @@ export async function processJoinAllJob(job: JoinAllJob, slack: WebClient): Prom
         console.warn(`[postie] could not join #${channel.name}:`, err);
       }
     }
-    cursor = res.response_metadata?.next_cursor || undefined;
-  } while (cursor);
+  }
 
   const summary =
     `:postbox: Joined ${joined} public channel${joined === 1 ? '' : 's'}` +

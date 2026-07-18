@@ -122,16 +122,10 @@ export class DynamoStore implements Store {
   }
 
   async listTrackedCards(): Promise<CardRecord[]> {
-    const cards: CardRecord[] = [];
-    let cursor: string | undefined;
-    do {
-      const page: { data: CardRecord[]; cursor: string | null } = await CardEntity.scan
-        .where((a, op) => `${op.eq(a.status, 'sent')} AND ${op.notExists(a.trackingDone)}`)
-        .go({ cursor });
-      cards.push(...page.data);
-      cursor = page.cursor ?? undefined;
-    } while (cursor);
-    return cards;
+    const { data } = await CardEntity.scan
+      .where((a, op) => `${op.eq(a.status, 'sent')} AND ${op.notExists(a.trackingDone)}`)
+      .go({ pages: 'all' });
+    return data as CardRecord[];
   }
 
   async updateCardTracking(
