@@ -1,0 +1,10 @@
+node_modules/
+dist/
+cdk.out/
+.env
+*.local
+.DS_Store
+test/__output__/
+
+cdk.context.json
+CLAUDE.local.md

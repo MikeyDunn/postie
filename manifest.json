@@ -1,0 +1,57 @@
+{
+  "display_information": {
+    "name": "Postie",
+    "description": "Turn beloved Slack messages into real mailed postcards",
+    "background_color": "#c4553b"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "postie",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/postie",
+        "url": "https://YOUR-POSTIE-DOMAIN/slack/events",
+        "description": "Configure Postie postcards",
+        "usage_hint": "help | status | setup | address | threshold 5",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "bots:read",
+        "channels:history",
+        "channels:join",
+        "channels:read",
+        "chat:write",
+        "commands",
+        "emoji:read",
+        "files:read",
+        "files:write",
+        "groups:history",
+        "groups:read",
+        "reactions:read",
+        "users:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://YOUR-POSTIE-DOMAIN/slack/events",
+      "bot_events": [
+        "reaction_added",
+        "channel_created"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://YOUR-POSTIE-DOMAIN/slack/events"
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
