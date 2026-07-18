@@ -5,8 +5,8 @@
  *
  *   npm run gallery      (then it opens in the browser)
  */
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as QRCode from 'qrcode';
 import type { NormalizedMessage } from '../src/postcard/normalize';
 import {

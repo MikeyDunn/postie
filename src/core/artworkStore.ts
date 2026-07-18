@@ -1,5 +1,5 @@
+import { createHash } from 'node:crypto';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { createHash } from 'crypto';
 
 /**
  * Rendered card images live in S3 and reach Mailstream as public URLs —

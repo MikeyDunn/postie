@@ -2,9 +2,9 @@
  *   npx tsx /path/to/make-emoji.ts
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { initWasm, Resvg } from '@resvg/resvg-wasm';
-import * as fs from 'fs';
-import * as path from 'path';
 import satori from 'satori';
 
 const REPO = path.join(__dirname, '..');

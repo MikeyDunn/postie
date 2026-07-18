@@ -4,7 +4,12 @@ import { uploadArtwork } from '../core/artworkStore';
 import { decryptSecret } from '../core/crypto';
 import { DailyCapExceededError, type Store } from '../core/store';
 import { addressDisplayName, type SendJob, type TeamConfig } from '../core/types';
-import { getMailstreamClient, InsufficientPointsError, isStubMode } from '../mailstream/client';
+import {
+  getMailstreamClient,
+  InsufficientPointsError,
+  isStubMode,
+  type PostcardResult,
+} from '../mailstream/client';
 import { baseEmojiName } from './emoji';
 import {
   type NormalizedMessage,
@@ -179,7 +184,7 @@ async function sendPostcard(ctx: {
     ]);
   }
 
-  let result;
+  let result: PostcardResult;
   try {
     const mailstream = getMailstreamClient(configuredKey);
     result = await mailstream.createPostcard({

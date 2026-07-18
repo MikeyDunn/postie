@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import type { PostalAddress, PostcardSize } from '../core/types';
 
 export interface CreatePostcardInput {

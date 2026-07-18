@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import {
   aws_certificatemanager as acm,
   aws_apigatewayv2 as apigwv2,
@@ -26,7 +27,6 @@ import {
   aws_route53_targets as targets,
 } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
-import * as path from 'path';
 
 const BOT_TOKEN_PARAM = '/postie/slack/bot-token';
 const SIGNING_SECRET_PARAM = '/postie/slack/signing-secret';

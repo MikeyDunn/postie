@@ -279,6 +279,8 @@ export function segmentsToPlainText(segments: Segment[]): string {
           return s.text;
         case 'newline':
           return '\n';
+        default:
+          return '';
       }
     })
     .join('');
