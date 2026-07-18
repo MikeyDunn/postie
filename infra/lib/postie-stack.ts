@@ -185,8 +185,11 @@ export class PostieStack extends Stack {
 
     // Custom domain (context in cdk.json: domain + hostedZone). Cert is
     // DNS-validated against the Route53 zone — fully automated, no email.
-    const domainName = this.node.tryGetContext('domain') as string | undefined;
-    const zoneName = this.node.tryGetContext('hostedZone') as string | undefined;
+    const domainName =
+      process.env.POSTIE_DOMAIN ?? (this.node.tryGetContext('domain') as string | undefined);
+    const zoneName =
+      process.env.POSTIE_HOSTED_ZONE ??
+      (this.node.tryGetContext('hostedZone') as string | undefined);
 
     let apiDomain: apigwv2.DomainName | undefined;
     let zone: route53.IHostedZone | undefined;
@@ -222,6 +225,36 @@ export class PostieStack extends Stack {
     }
 
     const publicUrl = domainName ? `https://${domainName}` : api.apiEndpoint;
+    // CI/CD: GitHub Actions assumes this role via OIDC (no stored AWS keys).
+    // The role can only assume the CDK bootstrap roles, and only from the
+    // configured repo's main branch. Gated on githubRepo (env or gitignored
+    // context) so forks without CD skip it entirely.
+    const githubRepo =
+      process.env.POSTIE_GITHUB_REPO ??
+      (this.node.tryGetContext('githubRepo') as string | undefined);
+    if (githubRepo) {
+      const provider = new iam.OpenIdConnectProvider(this, 'GithubOidc', {
+        url: 'https://token.actions.githubusercontent.com',
+        clientIds: ['sts.amazonaws.com'],
+      });
+      const deployRole = new iam.Role(this, 'GithubDeployRole', {
+        roleName: 'postie-github-deploy',
+        assumedBy: new iam.WebIdentityPrincipal(provider.openIdConnectProviderArn, {
+          StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
+          StringLike: {
+            'token.actions.githubusercontent.com:sub': `repo:${githubRepo}:ref:refs/heads/main`,
+          },
+        }),
+      });
+      deployRole.addToPolicy(
+        new iam.PolicyStatement({
+          actions: ['sts:AssumeRole'],
+          resources: [`arn:aws:iam::${this.account}:role/cdk-hnb659fds-*-role-*`],
+        }),
+      );
+      new CfnOutput(this, 'GithubDeployRoleArn', { value: deployRole.roleArn });
+    }
+
     new CfnOutput(this, 'SlackRequestUrl', {
       value: `${publicUrl}/slack/events`,
       description: 'Use for Slack event subscriptions, interactivity, and the /postie command',

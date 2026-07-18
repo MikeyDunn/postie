@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -21,4 +24,33 @@ jobs:
       # No AWS credentials needed: without domain context there are no
       # Route53 lookups, so the full stack synthesizes offline.
       - run: npx cdk synth --quiet
+        working-directory: infra
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    permissions:
+      id-token: write # mint the OIDC token that AWS verifies
+      contents: read
+    env:
+      POSTIE_DOMAIN: ${{ vars.POSTIE_DOMAIN }}
+      POSTIE_HOSTED_ZONE: ${{ vars.POSTIE_HOSTED_ZONE }}
+      POSTIE_ALERT_EMAIL: ${{ vars.POSTIE_ALERT_EMAIL }}
+      POSTIE_GITHUB_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - run: npx cdk deploy --require-approval never
         working-directory: infra
