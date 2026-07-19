@@ -49,7 +49,10 @@ Work phases in order; check items off as they land.
   so platform-specific binaries would silently break in Lambda. Don't add
   sharp back without switching to docker bundling. Same reason there's no AI
   outpainting: it would bill OUR account for other workspaces' cards —
-  square/portrait images get the blur-fill treatment instead.
+  square/portrait images get the blur-fill treatment instead. And no
+  native-HTML artwork (letting Mailstream render): we own the card archive —
+  their proofs expire in 7 days; our renders in S3 are the permanent record
+  (bucket has NO lifecycle expiration, deliberately).
 - **Card grammar: front = the moment, back = the information.** Photo cards
   (wide → full-bleed; square/portrait → blur-fill) carry zero text on the
   front; message + attribution + senders live on the back. Text cards put the

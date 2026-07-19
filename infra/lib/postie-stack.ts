@@ -54,7 +54,9 @@ export class PostieStack extends Stack {
 
     // Rendered card images, served to Mailstream's HTML renderer as public
     // URLs (their artwork fields cap at 100k chars — no inline images).
-    // Keys are unguessable UUIDs; objects expire after 180 days.
+    // Keys are unguessable content-addressed hashes. No expiration: cards
+    // are keepsakes and this bucket is their permanent archive (storage cost
+    // is pennies; a thousand cards is about a gigabyte).
     const artworkBucket = new s3.Bucket(this, 'Artwork', {
       blockPublicAccess: new s3.BlockPublicAccess({
         blockPublicAcls: true,
@@ -63,7 +65,6 @@ export class PostieStack extends Stack {
         restrictPublicBuckets: false,
       }),
       objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
-      lifecycleRules: [{ expiration: Duration.days(180) }],
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     });
