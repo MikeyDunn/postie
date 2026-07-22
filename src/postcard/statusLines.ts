@@ -7,6 +7,7 @@ export const STATUS_LINES: Record<string, string> = {
   ready: ':frame_with_picture: The print proof is ready.',
   failed:
     ':warning: Mailstream could not render the print proof — this card may not mail. Check the Mailstream dashboard.',
+  preparing: ':printer: The card is being prepared for print.',
   printed: ':printer: Postcard printed — heading to the mail stream.',
   sent: ':envelope_with_arrow: Handed to USPS!',
   mailed: ':envelope_with_arrow: In the mail! USPS has it.',
