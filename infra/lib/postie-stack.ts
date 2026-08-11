@@ -114,6 +114,11 @@ export class PostieStack extends Stack {
       KMS_KEY_ID: key.keyId,
       SLACK_BOT_TOKEN_PARAM: BOT_TOKEN_PARAM,
       SLACK_SIGNING_SECRET_PARAM: SIGNING_SECRET_PARAM,
+      // Shared so BOTH Lambdas agree: the worker sends with it, the receiver
+      // reports it in `/postie status`. 'live' calls the real Mailstream API
+      // with each workspace's own key (physical mail still gated account-side
+      // by print points). Deploy with MAILSTREAM_MODE=stub to sever the API.
+      MAILSTREAM_MODE: process.env.MAILSTREAM_MODE ?? 'live',
     };
 
     const entry = (file: string) => path.join(__dirname, '..', '..', 'src', 'lambda', file);
@@ -148,10 +153,6 @@ export class PostieStack extends Stack {
       }),
       environment: {
         ...commonEnv,
-        // 'live' calls the real Mailstream API with each workspace's own key.
-        // Physical mail is still gated account-side (print points + proof
-        // approval). Deploy with MAILSTREAM_MODE=stub to sever the API.
-        MAILSTREAM_MODE: process.env.MAILSTREAM_MODE ?? 'live',
         FONTS_DIR: '/var/task/assets/fonts',
         ARTWORK_BUCKET: artworkBucket.bucketName,
       },
