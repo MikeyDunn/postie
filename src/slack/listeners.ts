@@ -18,6 +18,7 @@ const HELP = [
   "`/postie status` — current configuration + today's count",
   '`/postie setup` — set the Mailstream API key (admins)',
   '`/postie address` — set the mailing address (admins)',
+  '`/postie cc` — also mail a copy to yourself (`/postie cc off` to stop) (admins)',
   '`/postie threshold <n>` — reactions needed to send (default 5)',
   '`/postie emoji <name>` — trigger emoji (default :postcard:)',
   '`/postie cap <n>` — max cards per day (default 10)',
@@ -106,6 +107,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
             `• Mailstream key: ${config.mailstreamApiKey ? ':lock: set' : '_not set — run `/postie setup`_'}`,
             `• Mode: ${isStubMode() ? ':test_tube: sandbox stub (no real mail)' : ':rocket: live'}`,
             `• Mail to: ${address}`,
+            `• Copy to me: ${config.ccAddress ? `:postbox: ${addressDisplayName(config.ccAddress)}, ${config.ccAddress.city} ${config.ccAddress.state}` : 'off'}`,
             `• Trigger: ${config.threshold}× :${config.triggerEmoji}:`,
             `• Size: ${config.size} · Daily cap: ${count}/${config.dailyCap} used today · ${total} card${total === 1 ? '' : 's'} all-time`,
             `• Presence: ${config.presence === 'everywhere' ? ':earth_americas: everywhere (auto-joins public channels)' : ':door: invited only'}`,
@@ -132,6 +134,22 @@ function registerCommand(app: App, deps: ListenerDeps): void {
         await client.views.open({
           trigger_id: command.trigger_id,
           view: addressModal(command.channel_id, config.address),
+        });
+        return;
+      }
+
+      case 'cc': {
+        if (!(await isAdmin(client, command.user_id))) {
+          return reply(':no_entry: Only workspace admins can change the copy-to-me address.');
+        }
+        if (rest[0]?.toLowerCase() === 'off') {
+          await deps.store.updateTeamConfig(teamId, { ccAddress: undefined });
+          return reply(':postbox: Copy-to-me is off — cards mail to the recipient only.');
+        }
+        const config = await deps.store.getTeamConfig(teamId);
+        await client.views.open({
+          trigger_id: command.trigger_id,
+          view: addressModal(command.channel_id, config.ccAddress, 'cc'),
         });
         return;
       }
@@ -291,7 +309,11 @@ function setupModal(channelId: string) {
   };
 }
 
-function addressModal(channelId: string, existing?: PostalAddress) {
+function addressModal(
+  channelId: string,
+  existing?: PostalAddress,
+  kind: 'primary' | 'cc' = 'primary',
+) {
   const text = (t: string) => ({ type: 'plain_text' as const, text: t });
   const input = (
     blockId: string,
@@ -311,16 +333,29 @@ function addressModal(channelId: string, existing?: PostalAddress) {
       placeholder: placeholder ? text(placeholder) : undefined,
     },
   });
+  const cc = kind === 'cc';
   return {
     type: 'modal' as const,
-    callback_id: 'postie_address_modal',
+    callback_id: cc ? 'postie_cc_modal' : 'postie_address_modal',
     private_metadata: JSON.stringify({ channelId }),
-    title: text('Postie · Address'),
+    title: text(cc ? 'Postie · Copy to me' : 'Postie · Address'),
     submit: text('Save'),
     close: text('Cancel'),
     blocks: [
-      input('first_name', 'Recipient first name', existing?.firstName, false, 'Jane'),
-      input('last_name', 'Recipient last name', existing?.lastName, false, 'Doe'),
+      input(
+        'first_name',
+        cc ? 'Your first name' : 'Recipient first name',
+        existing?.firstName,
+        false,
+        'Jane',
+      ),
+      input(
+        'last_name',
+        cc ? 'Your last name' : 'Recipient last name',
+        existing?.lastName,
+        false,
+        'Doe',
+      ),
       input('line1', 'Address line 1', existing?.line1, false, '123 Main St'),
       input('line2', 'Address line 2', existing?.line2, true, 'Apt 4'),
       input('city', 'City', existing?.city, false, 'Anytown'),
@@ -328,6 +363,26 @@ function addressModal(channelId: string, existing?: PostalAddress) {
       input('zip', 'ZIP', existing?.postalCode, false, '90210'),
     ],
   };
+}
+
+/** Parse + validate an address modal submission; returns errors or the address. */
+function parseAddressSubmission(
+  values: Record<string, { value?: { value?: string } }>,
+): { address: PostalAddress } | { errors: Record<string, string> } {
+  const get = (blockId: string) => values[blockId]?.value?.value?.trim() ?? '';
+  const address: PostalAddress = {
+    firstName: get('first_name'),
+    lastName: get('last_name'),
+    line1: get('line1'),
+    line2: get('line2') || undefined,
+    city: get('city'),
+    state: get('state').toUpperCase(),
+    postalCode: get('zip'),
+  };
+  const errors: Record<string, string> = {};
+  if (!/^[A-Z]{2}$/.test(address.state)) errors.state = 'Use the 2-letter state code, e.g. TX';
+  if (!/^\d{5}(-\d{4})?$/.test(address.postalCode)) errors.zip = 'Use a 5-digit ZIP (or ZIP+4)';
+  return Object.keys(errors).length > 0 ? { errors } : { address };
 }
 
 function registerViews(app: App, deps: ListenerDeps): void {
@@ -350,33 +405,36 @@ function registerViews(app: App, deps: ListenerDeps): void {
   });
 
   app.view('postie_address_modal', async ({ ack, view, body, client }) => {
-    const values = view.state.values;
-    const get = (blockId: string) => values[blockId]?.value?.value?.trim() ?? '';
-    const address: PostalAddress = {
-      firstName: get('first_name'),
-      lastName: get('last_name'),
-      line1: get('line1'),
-      line2: get('line2') || undefined,
-      city: get('city'),
-      state: get('state').toUpperCase(),
-      postalCode: get('zip'),
-    };
-
-    const errors: Record<string, string> = {};
-    if (!/^[A-Z]{2}$/.test(address.state)) errors.state = 'Use the 2-letter state code, e.g. TX';
-    if (!/^\d{5}(-\d{4})?$/.test(address.postalCode)) errors.zip = 'Use a 5-digit ZIP (or ZIP+4)';
-    if (Object.keys(errors).length > 0) {
-      await ack({ response_action: 'errors', errors });
+    const parsed = parseAddressSubmission(view.state.values);
+    if ('errors' in parsed) {
+      await ack({ response_action: 'errors', errors: parsed.errors });
       return;
     }
     await ack();
-
+    const { address } = parsed;
     await deps.store.updateTeamConfig(view.team_id, { address });
     await confirmEphemeral(
       client,
       view.private_metadata,
       body.user.id,
       `:house: Postcards will mail to *${addressDisplayName(address)}*, ${address.line1}, ${address.city} ${address.state} ${address.postalCode}. The return address comes from your Mailstream account default.`,
+    );
+  });
+
+  app.view('postie_cc_modal', async ({ ack, view, body, client }) => {
+    const parsed = parseAddressSubmission(view.state.values);
+    if ('errors' in parsed) {
+      await ack({ response_action: 'errors', errors: parsed.errors });
+      return;
+    }
+    await ack();
+    const { address } = parsed;
+    await deps.store.updateTeamConfig(view.team_id, { ccAddress: address });
+    await confirmEphemeral(
+      client,
+      view.private_metadata,
+      body.user.id,
+      `:postbox: Copy-to-me is on: every card now also mails a second copy to *${addressDisplayName(address)}*, ${address.line1}, ${address.city} ${address.state} ${address.postalCode}. That's a second real card each time (~$0.90). Turn off with \`/postie cc off\`.`,
     );
   });
 }

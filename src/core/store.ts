@@ -70,9 +70,15 @@ export class DynamoStore implements Store {
   }
 
   async updateTeamConfig(teamId: string, patch: Partial<TeamConfig>): Promise<void> {
-    const defined = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
-    if (Object.keys(defined).length === 0) return;
-    await ConfigEntity.upsert({ teamId, ...defined }).go();
+    // A key present with `undefined` means "remove this attribute" (e.g.
+    // `/postie cc off`); a key with a value means "set it".
+    const sets = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    const removes = Object.keys(patch).filter((k) => patch[k as keyof TeamConfig] === undefined);
+    if (Object.keys(sets).length > 0) await ConfigEntity.upsert({ teamId, ...sets }).go();
+    if (removes.length > 0)
+      await ConfigEntity.update({ teamId })
+        .remove(removes as Parameters<ReturnType<typeof ConfigEntity.update>['remove']>[0])
+        .go();
   }
 
   async acquireCardLock(teamId: string, channelId: string, messageTs: string): Promise<boolean> {
@@ -193,7 +199,13 @@ export class MemoryStore implements Store {
   }
 
   async updateTeamConfig(teamId: string, patch: Partial<TeamConfig>): Promise<void> {
-    this.configs.set(teamId, { ...this.configs.get(teamId), ...patch });
+    // Match DynamoStore: undefined removes the key, a value sets it.
+    const next = { ...this.configs.get(teamId) };
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === undefined) delete next[k as keyof TeamConfig];
+      else (next as Record<string, unknown>)[k] = v;
+    }
+    this.configs.set(teamId, next);
   }
 
   async acquireCardLock(teamId: string, channelId: string, messageTs: string): Promise<boolean> {

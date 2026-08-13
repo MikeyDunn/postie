@@ -223,6 +223,32 @@ async function sendPostcard(ctx: {
     proofUrl: result.proofUrl,
   });
 
+  // Copy-to-me: a second identical card to config.ccAddress, best-effort —
+  // the recipient card already shipped, so a CC failure never fails the job
+  // (and never triggers a retry that would re-mail the recipient). Same
+  // artwork, its own idempotency key + daily-cap slot, shares the card №.
+  let ccSent = false;
+  if (config.ccAddress) {
+    try {
+      await store.incrementDailyCount(teamId, today, config.dailyCap);
+      await getMailstreamClient(configuredKey).createPostcard({
+        size: config.size,
+        to: config.ccAddress,
+        frontUrl,
+        backUrl,
+        idempotencyKey: `${idempotencyKey}:cc`,
+        description: `Postie № ${cardNumber} (copy) · #${normalized.channelName} · ${today}`,
+      });
+      ccSent = true;
+    } catch (err) {
+      if (err instanceof DailyCapExceededError) {
+        console.warn('[postie] cc copy skipped — daily cap reached');
+      } else {
+        console.error('[postie] cc copy failed (recipient card already sent):', err);
+      }
+    }
+  }
+
   await postCardPreview(deps, {
     normalized,
     config,
@@ -232,6 +258,7 @@ async function sendPostcard(ctx: {
     front,
     back,
     photoFront,
+    ccSent,
   });
 }
 
@@ -246,6 +273,7 @@ async function postCardPreview(
     front: Buffer;
     back: Buffer;
     photoFront: boolean;
+    ccSent: boolean;
   },
 ): Promise<void> {
   const { normalized, config, count, cardNumber, result, front, back } = ctx;
@@ -254,6 +282,11 @@ async function postCardPreview(
     `:postbox: *This message is officially postcard-worthy!* ${count}× :${config.triggerEmoji}: made it happen.`,
     `Postcard № ${cardNumber} (${config.size}) is heading to *${addressDisplayName(to)}* in ${to.city}, ${to.state}.`,
   ];
+  if (ctx.ccSent && config.ccAddress) {
+    lines.push(
+      `:incoming_envelope: A copy is also on its way to *${addressDisplayName(config.ccAddress)}*.`,
+    );
+  }
   if (isStubMode()) {
     lines.push(':test_tube: _Sandbox mode — rendered for real, mailed nowhere._');
   } else if (result.proofUrl) {

@@ -20,6 +20,12 @@ export interface TeamConfig {
   /** Encrypted at rest — see core/crypto.ts ("kms:" or "plain:" prefixed). */
   mailstreamApiKey?: string;
   address?: PostalAddress;
+  /**
+   * Optional "copy to me": when set, every card also mails a second identical
+   * copy here (a second real card — its own points + daily-cap slot). Off
+   * until set; cleared with `/postie cc off`.
+   */
+  ccAddress?: PostalAddress;
   threshold: number;
   triggerEmoji: string;
   dailyCap: number;

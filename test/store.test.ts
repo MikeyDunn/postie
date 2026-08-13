@@ -28,6 +28,22 @@ describe('MemoryStore (contract shared with DynamoStore)', () => {
     expect(await store.incrementDailyCount('T1', '2026-07-13', 2)).toBe(2);
   });
 
+  it('stores and clears an optional cc (copy-to-me) address', async () => {
+    const store = new MemoryStore();
+    const cc = {
+      firstName: 'Me',
+      lastName: 'Myself',
+      line1: '1 Home St',
+      city: 'Austin',
+      state: 'TX',
+      postalCode: '78701',
+    };
+    await store.updateTeamConfig('T1', { ccAddress: cc });
+    expect((await store.getTeamConfig('T1')).ccAddress).toEqual(cc);
+    await store.updateTeamConfig('T1', { ccAddress: undefined });
+    expect((await store.getTeamConfig('T1')).ccAddress).toBeUndefined();
+  });
+
   it('tracks lifetime card totals through the number counter', async () => {
     const store = new MemoryStore();
     expect(await store.getCardTotal('T1')).toBe(0);

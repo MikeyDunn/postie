@@ -42,6 +42,8 @@ export const ConfigEntity = new Entity(
       teamId: { type: 'string', required: true },
       mailstreamApiKey: { type: 'string' },
       address,
+      // Optional "copy to me" recipient — same shape as the primary address.
+      ccAddress: address,
       threshold: { type: 'number' },
       triggerEmoji: { type: 'string' },
       dailyCap: { type: 'number' },
