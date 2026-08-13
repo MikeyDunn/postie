@@ -294,10 +294,14 @@ async function postCardPreview(
       `<${result.proofUrl}|Print proof (PDF)> — their renderer takes ~20 min, so the link may 404 at first.`,
     );
   }
+  // Link back to the message it celebrates, since it now posts to the root.
+  if (normalized.permalink) lines.push(`_from <${normalized.permalink}|this message>_`);
 
+  // Posted to the channel root (no thread_ts) so a postcard-worthy moment is
+  // visible to everyone, not buried in the triggering message's thread.
+  // Delivery-status follow-ups still thread on the original message.
   await deps.slack.files.uploadV2({
     channel_id: normalized.channelId,
-    thread_ts: normalized.messageTs,
     initial_comment: lines.join('\n'),
     file_uploads: [
       { file: front, filename: ctx.photoFront ? 'postcard-front.jpg' : 'postcard-front.png' },
