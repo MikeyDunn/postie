@@ -67,9 +67,10 @@ Work phases in order; check items off as they land.
   summary) → else chrome as last resort. `blocksToTokens`
   (src/postcard/blocks.ts) classifies; the normalizer selects. Never
   special-case a specific bot's message shape — adjust the hierarchy
-  generically. Provenance follows the same rule: a bot post whose chrome
-  mentions exactly ONE user is attributed to that human ("— sam · via bot"),
-  since Slack bots conventionally credit the acting user in context blocks.
+  generically. Provenance follows the same rule: a bot post is attributed
+  to the FIRST user its chrome mentions ("— sam · via bot"), since Slack bots
+  conventionally credit the acting user first in context blocks — later
+  mentions are usually people named inside the echoed prompt.
 - **Exactly-once = the DynamoDB conditional put** (`acquireCardLock`), not the
   reaction count. `reaction_added` fires per-person with no total; the worker
   re-reads counts via `reactions.get` and treats them as a hint only. A

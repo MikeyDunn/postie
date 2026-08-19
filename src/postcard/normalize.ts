@@ -24,10 +24,11 @@ export interface NormalizedMessage {
   author: { id?: string; name: string; avatarUrl?: string };
   /**
    * The human a bot posted on behalf of. Slack convention: bots credit the
-   * acting user in their context block — when a bot-authored message's
-   * chrome contains exactly one user mention, that's who "I" refers to in
-   * the text, so the card attributes to them ("via <bot>"). Undefined for
-   * human posts or when ambiguous.
+   * acting user FIRST in their context block — later mentions are usually
+   * people named inside the user-supplied prompt the bot echoes back. So the
+   * first user mention in a bot-authored message's chrome is who "I" refers
+   * to, and the card attributes to them ("via <bot>"). Undefined for human
+   * posts or mention-free chrome.
    */
   onBehalfOf?: { id: string; name: string; avatarUrl?: string };
   segments: Segment[];
@@ -184,13 +185,11 @@ export async function normalizeMessage(
 
   let onBehalfOf: NormalizedMessage['onBehalfOf'];
   if (!message.user) {
-    const mentioned = [
-      ...new Set(
-        chrome.filter((t) => t.kind === 'user').map((t) => (t as { userId: string }).userId),
-      ),
-    ];
-    if (mentioned.length === 1) {
-      onBehalfOf = { id: mentioned[0], ...(await getUserInfo(client, mentioned[0], userCache)) };
+    // First mention wins: bots credit the acting user before echoing the
+    // prompt, so mentions inside the prompt text can't steal attribution.
+    const first = chrome.find((t) => t.kind === 'user') as { userId: string } | undefined;
+    if (first) {
+      onBehalfOf = { id: first.userId, ...(await getUserInfo(client, first.userId, userCache)) };
     }
   }
   const segments: Segment[] = [];

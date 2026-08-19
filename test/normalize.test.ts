@@ -114,15 +114,8 @@ describe('normalizeMessage with a bot image post', () => {
     expect(n.onBehalfOf?.name).toBe('mike');
   });
 
-  it('leaves onBehalfOf unset for human posts and ambiguous chrome', async () => {
-    const human = await normalizeMessage(fakeClient, {
-      teamId: 'T1',
-      channelId: 'C1',
-      message: { ts: '1.1', user: 'U7', text: 'hello' },
-    });
-    expect(human.onBehalfOf).toBeUndefined();
-
-    const twoMentions = await normalizeMessage(fakeClient, {
+  it('attributes to the FIRST mention when the prompt itself mentions people', async () => {
+    const n = await normalizeMessage(fakeClient, {
       teamId: 'T1',
       channelId: 'C1',
       message: {
@@ -131,12 +124,42 @@ describe('normalizeMessage with a bot image post', () => {
           ...(BOT_IMAGE_MESSAGE.blocks ?? []).slice(0, 1),
           {
             type: 'context',
-            elements: [{ type: 'mrkdwn', text: '<@U1> and <@U2> collaborated' }],
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: '<@U151PTHK9> | *draw <@U2> riding a dragon* | GPT-5 Image Mini',
+              },
+            ],
           },
         ],
       },
     });
-    expect(twoMentions.onBehalfOf).toBeUndefined();
+    expect(n.onBehalfOf?.id).toBe('U151PTHK9');
+  });
+
+  it('leaves onBehalfOf unset for human posts and mention-free chrome', async () => {
+    const human = await normalizeMessage(fakeClient, {
+      teamId: 'T1',
+      channelId: 'C1',
+      message: { ts: '1.1', user: 'U7', text: 'hello <@U2>' },
+    });
+    expect(human.onBehalfOf).toBeUndefined();
+
+    const noMentions = await normalizeMessage(fakeClient, {
+      teamId: 'T1',
+      channelId: 'C1',
+      message: {
+        ...BOT_IMAGE_MESSAGE,
+        blocks: [
+          ...(BOT_IMAGE_MESSAGE.blocks ?? []).slice(0, 1),
+          {
+            type: 'context',
+            elements: [{ type: 'mrkdwn', text: '*cat in space* | GPT-5 Image Mini' }],
+          },
+        ],
+      },
+    });
+    expect(noMentions.onBehalfOf).toBeUndefined();
   });
 
   it('prefers bot_profile over the bots.info call', async () => {
