@@ -125,11 +125,10 @@ export const FIXTURES: Fixture[] = [
       channelName: 'gen-art',
       author: { name: 'clank' },
       onBehalfOf: { id: 'U9', name: 'samiswoi bart' },
-      segments: text(
-        '✨ Generated image for: "suddenly i dancing severance style with the furry orcas"',
-      ),
-      plainText:
-        '✨ Generated image for: "suddenly i dancing severance style with the furry orcas"',
+      // What the normalizer now yields for an AI image post: the human's
+      // prompt mined from the chrome's bold run, wrapper and metadata gone.
+      segments: text('suddenly i dancing severance style with the furry orcas'),
+      plainText: 'suddenly i dancing severance style with the furry orcas',
     }),
     back: { senders: [{ name: 'samiswoi bart' }] },
   },

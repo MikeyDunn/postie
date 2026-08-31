@@ -63,14 +63,17 @@ Work phases in order; check items off as they land.
 - **Card text = editorial hierarchy, not raw faithfulness.** Slack's block
   types encode emphasis: rich_text/section/header are the author's words
   (content); context blocks are small-gray metadata (chrome). Cards print
-  content → else the top-level `text` (the bot author's own one-line
+  content → else the human's prompt echoed as the chrome's *bold* run (bot
+  posts only) → else the top-level `text` (the bot author's own one-line
   summary) → else chrome as last resort. `blocksToTokens`
   (src/postcard/blocks.ts) classifies; the normalizer selects. Never
   special-case a specific bot's message shape — adjust the hierarchy
-  generically. Provenance follows the same rule: a bot post is attributed
-  to the FIRST user its chrome mentions ("— sam · via bot"), since Slack bots
-  conventionally credit the acting user first in context blocks — later
-  mentions are usually people named inside the echoed prompt.
+  generically. Provenance follows the same rule: a bot post is attributed to
+  the last user mentioned BEFORE the chrome's bold echo ("— sam · via bot") —
+  credit lines put the words' owner directly ahead of them ("@sam | *prompt*",
+  "…on @paul's message: *echo*"); mentions inside the echo are people being
+  talked about. Echo-free chrome falls back to the first mention (the acting
+  user).
 - **Exactly-once = the DynamoDB conditional put** (`acquireCardLock`), not the
   reaction count. `reaction_added` fires per-person with no total; the worker
   re-reads counts via `reactions.get` and treats them as a hint only. A

@@ -45,17 +45,40 @@ describe('normalizeMessage with a bot image post', () => {
     expect(n.image?.mimetype).toBe('image/png');
   });
 
-  it('prefers the bot summary over context-block chrome when there are no content blocks', async () => {
+  it('prints the prompt echoed in bold chrome, not the bot summary or metadata', async () => {
     const n = await normalizeMessage(fakeClient, {
       teamId: 'T1',
       channelId: 'C1',
       message: BOT_IMAGE_MESSAGE,
     });
-    // context blocks are metadata ("model | runtime | cost") — a postcard
-    // prints the author's summary line instead.
-    expect(n.plainText).toBe('✨ Generated image for: "cat in space"');
+    // The chrome's bold run is the human's own words (the same convention
+    // that drives attribution) — the "Generated image for" wrapper and the
+    // model metadata stay off the card. Bold is stripped: it marked
+    // "user-supplied" in Slack, not authorial emphasis.
+    expect(n.plainText).toBe('cat in space');
+    expect(n.segments).toContainEqual({ kind: 'text', text: 'cat in space' });
+    expect(n.plainText).not.toContain('Generated image for');
     expect(n.plainText).not.toContain('GPT-5 Image Mini');
     expect(n.plainText).not.toContain('internal monologue');
+  });
+
+  it('falls back to the bot summary when chrome has no bold echo', async () => {
+    const n = await normalizeMessage(fakeClient, {
+      teamId: 'T1',
+      channelId: 'C1',
+      message: {
+        ...BOT_IMAGE_MESSAGE,
+        blocks: [
+          BOT_IMAGE_MESSAGE.blocks![0],
+          {
+            type: 'context',
+            elements: [{ type: 'mrkdwn', text: '<@U151PTHK9> | GPT-5 Image Mini' }],
+          },
+        ],
+      },
+    });
+    expect(n.plainText).toBe('✨ Generated image for: "cat in space"');
+    expect(n.plainText).not.toContain('GPT-5 Image Mini');
   });
 
   it('uses context chrome only when it is the only text anywhere', async () => {
@@ -65,9 +88,35 @@ describe('normalizeMessage with a bot image post', () => {
       message: {
         ...BOT_IMAGE_MESSAGE,
         text: '',
+        blocks: [
+          BOT_IMAGE_MESSAGE.blocks![0],
+          {
+            type: 'context',
+            elements: [{ type: 'mrkdwn', text: '<@U151PTHK9> | GPT-5 Image Mini' }],
+          },
+        ],
       },
     });
-    expect(n.plainText).toBe('@mike | cat in space | GPT-5 Image Mini');
+    expect(n.plainText).toBe('@mike | GPT-5 Image Mini');
+  });
+
+  it('never mines chrome bold on human posts', async () => {
+    const n = await normalizeMessage(fakeClient, {
+      teamId: 'T1',
+      channelId: 'C1',
+      message: {
+        ts: '1.3',
+        user: 'U151PTHK9',
+        text: 'my own words',
+        blocks: [
+          {
+            type: 'context',
+            elements: [{ type: 'mrkdwn', text: 'edited | *something bold*' }],
+          },
+        ],
+      },
+    });
+    expect(n.plainText).toBe('my own words');
   });
 
   it('lets content blocks beat the fallback summary', async () => {
@@ -114,7 +163,7 @@ describe('normalizeMessage with a bot image post', () => {
     expect(n.onBehalfOf?.name).toBe('mike');
   });
 
-  it('attributes to the FIRST mention when the prompt itself mentions people', async () => {
+  it('attributes to the mention before the echo, not people named inside it', async () => {
     const n = await normalizeMessage(fakeClient, {
       teamId: 'T1',
       channelId: 'C1',
@@ -135,6 +184,63 @@ describe('normalizeMessage with a bot image post', () => {
       },
     });
     expect(n.onBehalfOf?.id).toBe('U151PTHK9');
+    // The mention inside the echo renders as a mention, not a raw id.
+    expect(n.plainText).toBe('draw @mike riding a dragon');
+  });
+
+  it('quotes the message author on summoned posts, not the summoner', async () => {
+    // Summon-credit shape (Clank ≥2026-08-31): the echoed reacted-message
+    // text is the bold run; the summoner is the first mention, the words'
+    // author the mention just before the echo.
+    const n = await normalizeMessage(fakeClient, {
+      teamId: 'T1',
+      channelId: 'C1',
+      message: {
+        ...BOT_IMAGE_MESSAGE,
+        text: 'Clank reacted to a message',
+        blocks: [
+          ...(BOT_IMAGE_MESSAGE.blocks ?? []).slice(0, 1),
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: "🤖 <@USUMMONER> summoned Clank on <@UAUTHOR>'s message: *fuck this noise, you were banned from <#C06H16G7BA4|business>…* · <https://x.slack.com/p9|source> | GPT-5 Image Mini | 43s | ~$0.09",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(n.plainText).toBe('fuck this noise, you were banned from #business…');
+    expect(n.plainText).not.toContain('source');
+    expect(n.onBehalfOf?.id).toBe('UAUTHOR');
+  });
+
+  it('keeps first-mention attribution and the summary text on echo-free summon posts', async () => {
+    // Every summon post older than the echo convention: no bold run at all.
+    const n = await normalizeMessage(fakeClient, {
+      teamId: 'T1',
+      channelId: 'C1',
+      message: {
+        ...BOT_IMAGE_MESSAGE,
+        text: 'Clank reacted to a message',
+        blocks: [
+          ...(BOT_IMAGE_MESSAGE.blocks ?? []).slice(0, 1),
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: "🤖 <@USUMMONER> summoned Clank on <@UAUTHOR>'s message · <https://x.slack.com/p9|source> | GPT-5 Image Mini",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(n.plainText).toBe('Clank reacted to a message');
+    expect(n.onBehalfOf?.id).toBe('USUMMONER');
   });
 
   it('leaves onBehalfOf unset for human posts and mention-free chrome', async () => {

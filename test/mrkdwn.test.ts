@@ -63,4 +63,23 @@ describe('tokenize', () => {
       { kind: 'text', text: 'Nov 14 2023' },
     ]);
   });
+
+  it('parses angle elements and emoji inside styled runs, tagged with the style', () => {
+    // The summon-credit shape: an echoed message may carry mentions, links,
+    // and emoji inside its bold run — they must tokenize, not print raw ids.
+    expect(
+      tokenize("on <@U1>'s message: *tell <@U2> about <https://a.com|it> :fire:* · done"),
+    ).toEqual([
+      { kind: 'text', text: 'on ' },
+      { kind: 'user', userId: 'U1', label: undefined },
+      { kind: 'text', text: "'s message: " },
+      { kind: 'text', text: 'tell ', style: 'bold' },
+      { kind: 'user', userId: 'U2', label: undefined, style: 'bold' },
+      { kind: 'text', text: ' about ', style: 'bold' },
+      { kind: 'link', url: 'https://a.com', label: 'it', style: 'bold' },
+      { kind: 'text', text: ' ', style: 'bold' },
+      { kind: 'emoji', name: 'fire', style: 'bold' },
+      { kind: 'text', text: ' · done' },
+    ]);
+  });
 });

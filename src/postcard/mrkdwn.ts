@@ -9,11 +9,11 @@ export type TextStyle = 'bold' | 'italic' | 'strike' | 'code';
 
 export type Token =
   | { kind: 'text'; text: string; style?: TextStyle }
-  | { kind: 'user'; userId: string; label?: string }
-  | { kind: 'channel'; channelId: string; label?: string }
-  | { kind: 'broadcast'; range: string }
-  | { kind: 'link'; url: string; label?: string }
-  | { kind: 'emoji'; name: string; unicode?: string }
+  | { kind: 'user'; userId: string; label?: string; style?: TextStyle }
+  | { kind: 'channel'; channelId: string; label?: string; style?: TextStyle }
+  | { kind: 'broadcast'; range: string; style?: TextStyle }
+  | { kind: 'link'; url: string; label?: string; style?: TextStyle }
+  | { kind: 'emoji'; name: string; unicode?: string; style?: TextStyle }
   | { kind: 'codeblock'; text: string }
   | { kind: 'newline' };
 
@@ -59,29 +59,37 @@ function parseAngle(content: string): Token {
   return { kind: 'link', url, label };
 }
 
-function tokenizeInline(line: string, out: Token[]): void {
+function withStyle(t: Token, style?: TextStyle): Token {
+  if (!style || t.kind === 'codeblock' || t.kind === 'newline') return t;
+  return { ...t, style };
+}
+
+/**
+ * Styled runs (*…* _…_ ~…~) recurse so angle elements and emoji inside them
+ * still tokenize — "…message: *ask <@U2> about it*" must yield a mention, not
+ * the literal id. Nested tokens carry the enclosing style (innermost wins);
+ * code spans stay literal. matchAll keeps recursion safe: unlike exec it does
+ * not share the module-level regex's lastIndex across nested calls.
+ */
+function tokenizeInline(line: string, out: Token[], style?: TextStyle): void {
   let last = 0;
-  INLINE.lastIndex = 0;
-  for (let m = INLINE.exec(line); m; m = INLINE.exec(line)) {
-    if (m.index > last) {
-      out.push({ kind: 'text', text: unescapeEntities(line.slice(last, m.index)) });
-    }
+  const pushText = (raw: string) =>
+    out.push({ kind: 'text', text: unescapeEntities(raw), ...(style ? { style } : {}) });
+  for (const m of line.matchAll(INLINE)) {
+    const at = m.index ?? 0;
+    if (at > last) pushText(line.slice(last, at));
     const [, angle, emoji, bold, italic, strike, code] = m;
-    if (angle !== undefined) out.push(parseAngle(angle));
-    else if (emoji !== undefined) out.push({ kind: 'emoji', name: emoji });
-    else if (bold !== undefined)
-      out.push({ kind: 'text', text: unescapeEntities(bold), style: 'bold' });
-    else if (italic !== undefined)
-      out.push({ kind: 'text', text: unescapeEntities(italic), style: 'italic' });
-    else if (strike !== undefined)
-      out.push({ kind: 'text', text: unescapeEntities(strike), style: 'strike' });
+    if (angle !== undefined) out.push(withStyle(parseAngle(angle), style));
+    else if (emoji !== undefined)
+      out.push(withStyle({ kind: 'emoji', name: emoji }, style) as Token);
     else if (code !== undefined)
       out.push({ kind: 'text', text: unescapeEntities(code), style: 'code' });
-    last = m.index + m[0].length;
+    else if (bold !== undefined) tokenizeInline(bold, out, 'bold');
+    else if (italic !== undefined) tokenizeInline(italic, out, 'italic');
+    else if (strike !== undefined) tokenizeInline(strike, out, 'strike');
+    last = at + m[0].length;
   }
-  if (last < line.length) {
-    out.push({ kind: 'text', text: unescapeEntities(line.slice(last)) });
-  }
+  if (last < line.length) pushText(line.slice(last));
 }
 
 function tokenizeChunk(chunk: string, out: Token[]): void {

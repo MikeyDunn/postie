@@ -10,9 +10,10 @@ import { type Token, tokenize } from './mrkdwn';
  *     metadata ("model | runtime | cost"), not the message.
  *
  * A postcard prints content. When a message has no content blocks, the
- * top-level `text` (the bot author's own one-line notification summary) is
- * usually the most card-worthy line available; chrome is the last resort.
- * That selection lives in the normalizer — this module only classifies.
+ * human's prompt echoed as the chrome's bold run, then the top-level `text`
+ * (the bot author's own one-line notification summary) fill in; raw chrome
+ * is the last resort. That selection lives in the normalizer — this module
+ * only classifies.
  */
 export interface BlockTokens {
   content: Token[];

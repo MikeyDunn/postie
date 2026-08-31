@@ -23,12 +23,13 @@ export interface NormalizedMessage {
   messageTs: string;
   author: { id?: string; name: string; avatarUrl?: string };
   /**
-   * The human a bot posted on behalf of. Slack convention: bots credit the
-   * acting user FIRST in their context block — later mentions are usually
-   * people named inside the user-supplied prompt the bot echoes back. So the
-   * first user mention in a bot-authored message's chrome is who "I" refers
-   * to, and the card attributes to them ("via <bot>"). Undefined for human
-   * posts or mention-free chrome.
+   * The human a bot posted on behalf of — whose words the card quotes.
+   * Slack convention: bot credit lines place the owner of the echoed words
+   * directly before the bold run ("<@requester> | *prompt*", "summoned Clank
+   * on <@author>'s message: *echo*"), so the last mention ahead of the echo
+   * is the speaker (see chromeSpeaker); echo-free chrome credits the first
+   * mention, the acting user. Undefined for human posts or mention-free
+   * chrome.
    */
   onBehalfOf?: { id: string; name: string; avatarUrl?: string };
   segments: Segment[];
@@ -168,6 +169,56 @@ function extractImage(message: SlackMessage): NormalizedMessage['image'] {
   return undefined;
 }
 
+/**
+ * The human's words echoed inside bot chrome: bots bold that person's words
+ * amid the context metadata ("@sam | *the prompt* | model | cost", "summoned
+ * on @paul's message: *echo*") — bold tokens are the human's words, more
+ * card-worthy than the bot's summary line. Mentions, links, and emoji inside
+ * the echo flow through as themselves (they carry the bold tag from the
+ * tokenizer). The tag is then dropped: it marked "user-supplied" in Slack's
+ * chrome, it isn't authorial emphasis.
+ */
+function chromeEmphasis(chrome: Token[]): Token[] {
+  const out: Token[] = [];
+  let separated = false;
+  for (const t of chrome) {
+    if (t.kind === 'codeblock' || t.kind === 'newline' || t.style !== 'bold') {
+      separated = out.length > 0;
+      continue;
+    }
+    // A gap between bold groups (old multi-run lines) becomes a line break.
+    if (separated) {
+      out.push({ kind: 'newline' });
+      separated = false;
+    }
+    const { style: _style, ...rest } = t;
+    out.push(rest as Token);
+  }
+  return out;
+}
+
+type UserToken = Extract<Token, { kind: 'user' }>;
+
+/**
+ * Whose words the card quotes. Credit lines place the owner of the echoed
+ * words directly before the bold run ("<@requester> | *prompt*", "summoned
+ * Clank on <@author>'s message: *echo*"), so the last mention ahead of the
+ * echo is the speaker — mentions inside the echo are people being talked
+ * about, not the voice. Echo-free chrome falls back to the first mention
+ * (the acting user), the pre-echo convention.
+ */
+function chromeSpeaker(chrome: Token[]): UserToken | undefined {
+  const isUser = (t: Token): t is UserToken => t.kind === 'user';
+  const echoAt = chrome.findIndex(
+    (t) => t.kind !== 'codeblock' && t.kind !== 'newline' && t.style === 'bold',
+  );
+  if (echoAt >= 0) {
+    const before = chrome.slice(0, echoAt).filter(isUser);
+    if (before.length) return before[before.length - 1];
+  }
+  return chrome.find(isUser);
+}
+
 export async function normalizeMessage(
   client: WebClient,
   opts: { teamId: string; channelId: string; message: SlackMessage },
@@ -178,18 +229,27 @@ export async function normalizeMessage(
 
   const author = await resolveAuthor(client, message, userCache);
 
-  // Card text hierarchy: the author's words (content blocks) → the bot's own
-  // one-line summary (top-level text) → context-block chrome as last resort.
+  // Card text hierarchy: the author's words (content blocks) → the human's
+  // prompt echoed in bold chrome (bot posts — see chromeEmphasis) → the bot's
+  // own one-line summary (top-level text) → context-block chrome as last resort.
   const { content, chrome } = blocksToTokens(message.blocks);
-  const tokens = content.length ? content : message.text?.trim() ? tokenize(message.text) : chrome;
+  const echoed = message.user ? [] : chromeEmphasis(chrome);
+  const tokens = content.length
+    ? content
+    : echoed.length
+      ? echoed
+      : message.text?.trim()
+        ? tokenize(message.text)
+        : chrome;
 
   let onBehalfOf: NormalizedMessage['onBehalfOf'];
   if (!message.user) {
-    // First mention wins: bots credit the acting user before echoing the
-    // prompt, so mentions inside the prompt text can't steal attribution.
-    const first = chrome.find((t) => t.kind === 'user') as { userId: string } | undefined;
-    if (first) {
-      onBehalfOf = { id: first.userId, ...(await getUserInfo(client, first.userId, userCache)) };
+    const speaker = chromeSpeaker(chrome);
+    if (speaker) {
+      onBehalfOf = {
+        id: speaker.userId,
+        ...(await getUserInfo(client, speaker.userId, userCache)),
+      };
     }
   }
   const segments: Segment[] = [];
