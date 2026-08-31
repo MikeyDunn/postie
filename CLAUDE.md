@@ -12,8 +12,9 @@ Work phases in order; check items off as they land.
 - `npm run typecheck` / `npm test` — tests write sample card renders to `test/__output__/*.png`
 - `npm run gallery` — renders all representative message shapes (front+back) to `test/__output__/gallery/index.html`; THE layout-iteration loop. Run after touching `src/postcard/render.ts`.
 - `npm run deploy` / `npm run deploy:fast` — CloudFormation deploy / Lambda hotswap (set AWS_PROFILE; deployment specifics live in gitignored CLAUDE.local.md)
-- Deploy etiquette: hotswap for code-only changes (~15s); full deploy for infra. Run `cdk diff` FIRST when a change touches IAM/public exposure — unreviewed `--require-approval never` deploys get blocked, and public-exposure changes need the user's explicit yes.
+- Deploy etiquette: hotswap for code-only changes (~15s); full deploy for infra. Pushing to main auto-deploys via GitHub Actions CD — after a push, manual deploys are redundant (and hotswap leaves drift the CD run then reverts). Run `cdk diff` FIRST when a change touches IAM/public exposure — unreviewed `--require-approval never` deploys get blocked, and public-exposure changes need the user's explicit yes.
 - After gallery/tests, view output PNGs with the Read tool (it renders images) — visual inspection catches what dimension asserts can't (missing emoji, layout drift).
+- Gallery photo fixtures fetch picsum.photos; when it's down (503s happen), photo cards fail but text cards still render — not a code bug.
 - There is NO local dev environment — by choice. One Slack app, one deployment; iterate via tests/gallery + hotswap deploys.
 
 ## Load-bearing decisions
@@ -54,7 +55,9 @@ Work phases in order; check items off as they land.
   their proofs expire in 7 days; our renders in S3 are the permanent record
   (bucket has NO lifecycle expiration, deliberately).
 - **Card grammar: front = the moment, back = the information.** Photo cards
-  (wide → full-bleed; square/portrait → blur-fill) carry zero text on the
+  (wide → full-bleed; square/portrait → blur-fill, with the sharp original
+  inset 0.25"/edge — bleed + safe zone (`EDGE_SAFE_PX`), verified against
+  physical prints; don't "reclaim" that padding) carry zero text on the
   front; message + attribution + senders live on the back. Text cards put the
   message + author on the front; their back skips both. One meta line on the
   back (team · #channel · date) is the only home for context — nothing
@@ -103,6 +106,8 @@ Work phases in order; check items off as they land.
   live card ids, Mailstream balance) live in gitignored CLAUDE.local.md —
   the repo itself is deployment-agnostic: domain/hostedZone/alertEmail come
   from the gitignored infra/cdk.context.json, everything else from SSM/DynamoDB.
+- Tests/fixtures are public: anonymized Slack ids, invented neutral text —
+  never captured real messages, real user ids, or workspace channel ids.
 - Single-workspace by design for now; store is keyed by `team_id` everywhere,
   so multi-workspace = OAuth + installation store (TODO Phase 2), not a
   refactor.
