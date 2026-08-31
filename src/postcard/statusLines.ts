@@ -1,7 +1,7 @@
 /**
- * Thread messages for Mailstream postcard status values — shared by the
- * webhook handler and the polling tracker. Unknown statuses get a generic
- * line, so new upstream values degrade gracefully.
+ * Thread messages for Mailstream postcard status values, posted by the
+ * polling tracker. Unknown statuses get a generic line, so new upstream
+ * values degrade gracefully.
  */
 export const STATUS_LINES: Record<string, string> = {
   ready: ':frame_with_picture: The print proof is ready.',

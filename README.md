@@ -1,5 +1,7 @@
 # Postie 📮
 
+[![ci](https://github.com/MikeyDunn/postie/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeyDunn/postie/actions/workflows/ci.yml)
+
 A Slack app that turns beloved messages into real, mailed postcards. React to a
 message with :postcard: — when it collects enough reactions (default 5), Postie
 renders it into a print-ready card, mails it via
@@ -47,8 +49,9 @@ flowchart LR
   number, and a QR code back to the Slack thread — with the right 60% left
   clear for the address, postage, and USPS barcode.
 - Mentions, links, bold/italic/code, code blocks, custom workspace emoji, and
-  unicode emoji (twemoji) all render. Bot posts are attributed to the human
-  they were posted for when the bot credits one in its context block.
+  unicode emoji (twemoji) all render. AI-bot posts print the human's own
+  prompt (mined from the bot's context line) and are attributed to the person
+  whose words they echo — "— sam · via artbot".
 
 ## Repo layout
 
@@ -153,10 +156,11 @@ every representative message shape (fronts + backs) to
   resvg-wasm, and jimp: Lambda bundles build identically from any host OS, no
   Docker required.
 - **Renders what Slack renders.** Message text follows Block Kit's own
-  editorial hierarchy (rich_text/section/header content over notification
-  fallbacks, context-block "chrome" demoted), and bot posts are attributed to
-  the human credited in their context block ("— sam · via bot") — no
-  per-bot special cases.
+  editorial hierarchy: rich_text/section/header content first, then the
+  human's words echoed in **bold** inside a bot's context-block "chrome"
+  (the AI-image-bot convention), then the bot's own summary line. The same
+  convention drives attribution — the mention just before the echo is whose
+  words the card quotes ("— sam · via bot") — with no per-bot special cases.
 - **Contract archaeology.** The mail vendor's API reference sits behind a
   login, so the client's field names, enums, and limits were recovered from
   live validation-error probing (guaranteed-422 payloads), then verified

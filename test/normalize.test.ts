@@ -16,7 +16,7 @@ const fakeClient = {
 const BOT_IMAGE_MESSAGE: SlackMessage = {
   ts: '1783992999.844899',
   text: '✨ Generated image for: "cat in space"',
-  bot_id: 'B0A69CHT46T',
+  bot_id: 'B0IMAGEBOT9',
   blocks: [
     {
       type: 'image',
@@ -28,7 +28,7 @@ const BOT_IMAGE_MESSAGE: SlackMessage = {
     },
     {
       type: 'context',
-      elements: [{ type: 'mrkdwn', text: '<@U151PTHK9> | *cat in space* | GPT-5 Image Mini' }],
+      elements: [{ type: 'mrkdwn', text: '<@U0REQUESTR> | *cat in space* | GPT-5 Image Mini' }],
     },
   ],
 };
@@ -72,7 +72,7 @@ describe('normalizeMessage with a bot image post', () => {
           BOT_IMAGE_MESSAGE.blocks![0],
           {
             type: 'context',
-            elements: [{ type: 'mrkdwn', text: '<@U151PTHK9> | GPT-5 Image Mini' }],
+            elements: [{ type: 'mrkdwn', text: '<@U0REQUESTR> | GPT-5 Image Mini' }],
           },
         ],
       },
@@ -92,7 +92,7 @@ describe('normalizeMessage with a bot image post', () => {
           BOT_IMAGE_MESSAGE.blocks![0],
           {
             type: 'context',
-            elements: [{ type: 'mrkdwn', text: '<@U151PTHK9> | GPT-5 Image Mini' }],
+            elements: [{ type: 'mrkdwn', text: '<@U0REQUESTR> | GPT-5 Image Mini' }],
           },
         ],
       },
@@ -106,7 +106,7 @@ describe('normalizeMessage with a bot image post', () => {
       channelId: 'C1',
       message: {
         ts: '1.3',
-        user: 'U151PTHK9',
+        user: 'U0REQUESTR',
         text: 'my own words',
         blocks: [
           {
@@ -159,7 +159,7 @@ describe('normalizeMessage with a bot image post', () => {
       channelId: 'C1',
       message: BOT_IMAGE_MESSAGE,
     });
-    expect(n.onBehalfOf?.id).toBe('U151PTHK9');
+    expect(n.onBehalfOf?.id).toBe('U0REQUESTR');
     expect(n.onBehalfOf?.name).toBe('mike');
   });
 
@@ -176,14 +176,14 @@ describe('normalizeMessage with a bot image post', () => {
             elements: [
               {
                 type: 'mrkdwn',
-                text: '<@U151PTHK9> | *draw <@U2> riding a dragon* | GPT-5 Image Mini',
+                text: '<@U0REQUESTR> | *draw <@U2> riding a dragon* | GPT-5 Image Mini',
               },
             ],
           },
         ],
       },
     });
-    expect(n.onBehalfOf?.id).toBe('U151PTHK9');
+    expect(n.onBehalfOf?.id).toBe('U0REQUESTR');
     // The mention inside the echo renders as a mention, not a raw id.
     expect(n.plainText).toBe('draw @mike riding a dragon');
   });
@@ -205,14 +205,14 @@ describe('normalizeMessage with a bot image post', () => {
             elements: [
               {
                 type: 'mrkdwn',
-                text: "🤖 <@USUMMONER> summoned Clank on <@UAUTHOR>'s message: *fuck this noise, you were banned from <#C06H16G7BA4|business>…* · <https://x.slack.com/p9|source> | GPT-5 Image Mini | 43s | ~$0.09",
+                text: "🤖 <@USUMMONER> summoned Clank on <@UAUTHOR>'s message: *this fort is load-bearing now, complaints go to <#C0GENERAL01|general>…* · <https://x.slack.com/p9|source> | GPT-5 Image Mini | 43s | ~$0.09",
               },
             ],
           },
         ],
       },
     });
-    expect(n.plainText).toBe('fuck this noise, you were banned from #business…');
+    expect(n.plainText).toBe('this fort is load-bearing now, complaints go to #general…');
     expect(n.plainText).not.toContain('source');
     expect(n.onBehalfOf?.id).toBe('UAUTHOR');
   });

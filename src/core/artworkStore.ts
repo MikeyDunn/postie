@@ -9,8 +9,8 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
  * Keys are unguessable capability URLs, but DETERMINISTIC per message+side:
  * a retry re-uploads to the same key, keeping the Mailstream request payload
  * byte-identical so Idempotency-Key replay works instead of 422ing on
- * "reused with different payload". A lifecycle rule expires objects after
- * print history stops mattering.
+ * "reused with different payload". Objects never expire — Mailstream's proof
+ * links die in ~7 days, so this bucket is the cards' permanent archive.
  */
 
 let s3: S3Client | undefined;

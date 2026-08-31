@@ -8,9 +8,9 @@ import type { NormalizedMessage, Segment } from './normalize';
 
 /**
  * Print dimensions at 300 DPI including 0.125" bleed on each edge
- * (e.g. 4x6 → 6.25" x 4.25" artwork = 1875x1275).
- * TODO: confirm exact bleed + safe-zone specs against Mailstream's docs
- * once we have dashboard access — these follow common print-API conventions.
+ * (e.g. 4x6 → 6.25" x 4.25" artwork = 1875x1275). These follow common
+ * print-API conventions; the first physical print run trimmed exactly as
+ * this geometry predicts.
  */
 export const SIZE_SPECS: Record<PostcardSize, { width: number; height: number }> = {
   '4x6': { width: 1875, height: 1275 },
@@ -525,7 +525,8 @@ function sendersLine(senders: Sender[], authorName: string): string | undefined 
 
 /**
  * Back of the card. The right side stays clear for the address block +
- * postage (TODO: confirm Mailstream's exact clear-zone once docs are open).
+ * postage (Mailstream's template proof prints its return address from ~44%
+ * width — hence the 40% writable area).
  * When the front is a photo (full-bleed) the message text lives here; the
  * signature block (senders), card number, workspace name, and permalink QR
  * make the back the "who and where" side of the artifact.

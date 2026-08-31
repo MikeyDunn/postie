@@ -124,13 +124,13 @@ export const FIXTURES: Fixture[] = [
     message: msg({
       channelName: 'gen-art',
       author: { name: 'clank' },
-      onBehalfOf: { id: 'U9', name: 'samiswoi bart' },
+      onBehalfOf: { id: 'U9', name: 'maya chen' },
       // What the normalizer now yields for an AI image post: the human's
       // prompt mined from the chrome's bold run, wrapper and metadata gone.
       segments: text('suddenly i dancing severance style with the furry orcas'),
       plainText: 'suddenly i dancing severance style with the furry orcas',
     }),
-    back: { senders: [{ name: 'samiswoi bart' }] },
+    back: { senders: [{ name: 'maya chen' }] },
   },
   {
     name: 'single-sender-is-author',

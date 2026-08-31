@@ -58,22 +58,22 @@ export class StubMailstreamClient implements MailstreamClient {
 }
 
 /**
- * VERIFIED CONTRACT (probed live 2026-07-13 against a real account):
+ * VERIFIED CONTRACT (probed live 2026-07-13; confirmed with a real
+ * production order 2026-07-16):
  *   - Base URL https://my.mailstream.app/api/v1, `Authorization: Bearer <jwt>`
  *   - POST /postcards body: name, size (4x6|6x9|6x11), mail_type (first_class),
  *     to_address{first_name,last_name,address_line1[,address_line2],address_city,
  *     address_state(2-letter),address_zip(5-10)}, front_artwork + back_artwork —
- *     both must be HTML ("Must be valid HTML"), so rendered images ship inside
- *     a full-bleed <img> wrapper with a data URI.
+ *     both must be HTML ("Must be valid HTML") capped at 100k chars, so
+ *     rendered images ship inside a full-bleed <img> wrapper pointing at a
+ *     hosted URL (data URIs would blow the cap).
  *   - Idempotency-Key header must be a UUID; same key + same payload replays the
  *     cached response (Idempotency-Status: Repeated), different payload → 422,
  *     concurrent → 409.
  *   - Return (from) address is account-level (/return-addresses, one default).
- *   - Printing is gated by print-points balance and proof approval (unless
- *     auto-approve is enabled on the account).
- *
- * Still unverified (needs the first real create): response field names —
- * mapping below is tolerant until then.
+ *   - Printing is gated by print-points balance (charged at creation; 402
+ *     with a balance breakdown when underfunded). API-created cards go
+ *     straight to Scheduled — there is no proof-approval gate.
  */
 export class HttpMailstreamClient implements MailstreamClient {
   constructor(
