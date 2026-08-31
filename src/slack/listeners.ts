@@ -88,6 +88,13 @@ function registerCommand(app: App, deps: ListenerDeps): void {
       await respond({ response_type: 'ephemeral', text });
     };
 
+    // Every config-mutating subcommand is admin-gated, failing closed.
+    const requireAdmin = async (action: string): Promise<boolean> => {
+      if (await isAdmin(client, command.user_id)) return true;
+      await reply(`:no_entry: Only workspace admins can ${action}.`);
+      return false;
+    };
+
     switch (sub.toLowerCase()) {
       case '':
       case 'help':
@@ -116,9 +123,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
       }
 
       case 'setup': {
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can set the Mailstream API key.');
-        }
+        if (!(await requireAdmin('set the Mailstream API key'))) return;
         await client.views.open({
           trigger_id: command.trigger_id,
           view: setupModal(command.channel_id),
@@ -127,9 +132,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
       }
 
       case 'address': {
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can change the mailing address.');
-        }
+        if (!(await requireAdmin('change the mailing address'))) return;
         const config = await deps.store.getTeamConfig(teamId);
         await client.views.open({
           trigger_id: command.trigger_id,
@@ -139,9 +142,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
       }
 
       case 'cc': {
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can change the copy-to-me address.');
-        }
+        if (!(await requireAdmin('change the copy-to-me address'))) return;
         if (rest[0]?.toLowerCase() === 'off') {
           await deps.store.updateTeamConfig(teamId, { ccAddress: undefined });
           return reply(':postbox: Copy-to-me is off — cards mail to the recipient only.');
@@ -156,25 +157,19 @@ function registerCommand(app: App, deps: ListenerDeps): void {
 
       // threshold/cap/size are the spend-control knobs — admins only.
       case 'threshold':
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can change the threshold.');
-        }
+        if (!(await requireAdmin('change the threshold'))) return;
         return updateNumber(deps, teamId, reply, rest[0], 1, 25, 'threshold', (n) => ({
           threshold: n,
         }));
 
       case 'cap':
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can change the daily cap.');
-        }
+        if (!(await requireAdmin('change the daily cap'))) return;
         return updateNumber(deps, teamId, reply, rest[0], 1, 50, 'daily cap', (n) => ({
           dailyCap: n,
         }));
 
       case 'emoji': {
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can change the trigger emoji.');
-        }
+        if (!(await requireAdmin('change the trigger emoji'))) return;
         const name = (rest[0] ?? '').replace(/:/g, '').trim();
         if (!name) return reply('Usage: `/postie emoji <name>` (e.g. `/postie emoji postcard`)');
         await deps.store.updateTeamConfig(teamId, { triggerEmoji: name });
@@ -184,9 +179,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
       }
 
       case 'join-all': {
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can run join-all.');
-        }
+        if (!(await requireAdmin('run join-all'))) return;
         await deps.queue.enqueue({ type: 'join_all', teamId, responseUrl: command.response_url });
         return reply(
           ':hourglass_flowing_sand: Joining all public channels — summary coming shortly.',
@@ -214,9 +207,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
       }
 
       case 'presence': {
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can change presence mode.');
-        }
+        if (!(await requireAdmin('change presence mode'))) return;
         const mode = rest[0];
         if (mode !== 'everywhere' && mode !== 'invited') {
           return reply(
@@ -232,9 +223,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
       }
 
       case 'size': {
-        if (!(await isAdmin(client, command.user_id))) {
-          return reply(':no_entry: Only workspace admins can change the postcard size.');
-        }
+        if (!(await requireAdmin('change the postcard size'))) return;
         const size = rest[0] as PostcardSize;
         if (!['4x6', '6x9', '6x11'].includes(size)) {
           return reply('Usage: `/postie size <4x6|6x9|6x11>`');
