@@ -50,6 +50,9 @@ export async function processTrackAll(deps: PipelineDeps): Promise<void> {
       await deps.slack.chat.postMessage({
         channel: card.channelId,
         thread_ts: card.messageTs,
+        // Status changes are channel-worthy news, not just thread bookkeeping:
+        // broadcast keeps one message in the thread AND surfaces it at the root.
+        reply_broadcast: true,
         text: statusLine(remote.status),
       });
       await deps.store.updateCardTracking(card.teamId, card.channelId, card.messageTs, {
