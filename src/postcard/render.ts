@@ -18,6 +18,14 @@ export const SIZE_SPECS: Record<PostcardSize, { width: number; height: number }>
   '6x11': { width: 3375, height: 1875 },
 };
 
+/**
+ * Print-safety inset at 300 DPI: the 0.125" bleed is physically trimmed off
+ * every edge, and print convention keeps must-survive art another 0.125"
+ * inside the trim line. Anything an uncropped image needs to keep stays this
+ * far from the artwork edge.
+ */
+const EDGE_SAFE_PX = 75;
+
 const palette = {
   paper: '#FBF7EF',
   ink: '#2A241B',
@@ -444,7 +452,8 @@ export async function renderTextCardFront(
  *   - wide images (ratio ≥ 1.25): full-bleed cover crop
  *   - square/portrait (incl. 1024x1024 AI output): blur-fill — the image
  *     itself, scaled to cover and heavily blurred, becomes an ambient
- *     backdrop behind the sharp uncropped original at full height.
+ *     backdrop behind the sharp uncropped original, inset to trim-safe
+ *     height so the printer's edge trim never cuts into it.
  * JPEG output — a photo-sized PNG triples the size for no visible gain on
  * print stock.
  */
@@ -468,8 +477,15 @@ export async function renderPhotoFront(imageBuffer: Buffer, size: PostcardSize):
   bg.composite(new Jimp({ width, height, color: 0x00000055 }), 0, 0);
 
   const sharp = image.clone();
-  sharp.scale(height / sharp.height);
-  bg.composite(sharp, Math.round((width - sharp.width) / 2), 0);
+  // Scaled to the trim-safe height, not the full artwork: the bleed zone is
+  // physically cut in printing, which was slicing the top/bottom off the
+  // uncropped original. The blur backdrop owns the bleed instead.
+  sharp.scale((height - 2 * EDGE_SAFE_PX) / sharp.height);
+  bg.composite(
+    sharp,
+    Math.round((width - sharp.width) / 2),
+    Math.round((height - sharp.height) / 2),
+  );
   return bg.getBuffer('image/jpeg', { quality: 90 });
 }
 

@@ -54,7 +54,7 @@ describe('renderPhotoFront', () => {
     expect({ width: decoded.width, height: decoded.height }).toEqual(SIZE_SPECS['4x6']);
   });
 
-  it('blur-fills square images to full-bleed with the sharp original centered', async () => {
+  it('blur-fills square images with the sharp original inset clear of the trim', async () => {
     // Two-tone source so the blurred wings differ from the sharp center.
     const src = new Jimp({ width: 1024, height: 1024, color: 0x7a9e7eff });
     src.composite(new Jimp({ width: 512, height: 1024, color: 0xc4553bff }), 0, 0);
@@ -63,6 +63,13 @@ describe('renderPhotoFront', () => {
     expect(front.subarray(0, 3).toString('hex')).toBe('ffd8ff');
     const decoded = await Jimp.read(Buffer.from(front));
     expect({ width: decoded.width, height: decoded.height }).toEqual(SIZE_SPECS['4x6']);
+    // The top strip must be the darkened blur backdrop, not the sharp source:
+    // everything within the bleed + safe zone is lost to the printer's trim.
+    const red = (c: number) => (c >>> 24) & 0xff;
+    const x = Math.round(SIZE_SPECS['4x6'].width / 2) - 120; // inside the red half
+    const top = red(decoded.getPixelColor(x, 6));
+    const mid = red(decoded.getPixelColor(x, Math.round(SIZE_SPECS['4x6'].height / 2)));
+    expect(top).toBeLessThan(mid - 30);
     fs.mkdirSync(OUT_DIR, { recursive: true });
     fs.writeFileSync(path.join(OUT_DIR, 'blurfill-front.jpg'), front);
   });
