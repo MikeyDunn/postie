@@ -92,6 +92,10 @@ function registerCommand(app: App, deps: ListenerDeps): void {
     const reply = async (text: string): Promise<void> => {
       await respond({ response_type: 'ephemeral', text });
     };
+    // Visible to the whole channel — Slack also echoes who ran the command.
+    const announce = async (text: string): Promise<void> => {
+      await respond({ response_type: 'in_channel', text });
+    };
 
     // Every config-mutating subcommand is admin-gated, failing closed.
     const requireAdmin = async (action: string): Promise<boolean> => {
@@ -230,6 +234,8 @@ function registerCommand(app: App, deps: ListenerDeps): void {
 
       // The kill switch: a workspace-wide pause. Admin-only because it's the
       // same class as cap/threshold — a spend control, just an absolute one.
+      // The state change is announced in-channel so the room knows why
+      // reactions stopped (or started) working; the no-op replies stay private.
       case 'off': {
         if (!(await requireAdmin('turn Postie off'))) return;
         const config = await deps.store.getTeamConfig(teamId);
@@ -239,7 +245,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
           );
         }
         await deps.store.updateTeamConfig(teamId, { paused: true });
-        return reply(
+        return announce(
           [
             ':cry: *Oh.* Okay. Postie is off.',
             "I'll be right here, in the dark, not printing anything, thinking about all the postcards that could have been.",
@@ -255,7 +261,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
           return reply(':blush: Postie is already on — and thrilled you checked.');
         }
         await deps.store.updateTeamConfig(teamId, { paused: undefined });
-        return reply(
+        return announce(
           [
             ":tada: *I'M BACK!* Postie is on!",
             `Dust off those :${config.triggerEmoji}: reactions — the printer is warm, the stamps are licked, and I have never been happier.`,
