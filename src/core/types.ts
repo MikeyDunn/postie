@@ -38,6 +38,13 @@ export interface TeamConfig {
    * distribution (reactions in other channels do nothing, silently).
    */
   presence: 'everywhere' | 'invited';
+  /**
+   * `/postie off` — a workspace-wide pause. Trigger reactions are ignored
+   * (no new cards, no spend) until `/postie on`; already-mailed cards keep
+   * being tracked. Absent means running, so existing configs need no
+   * migration and `on` just removes the attribute.
+   */
+  paused?: boolean;
 }
 
 export type CardStatus = 'sending' | 'sent' | 'failed';

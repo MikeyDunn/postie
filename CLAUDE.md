@@ -92,9 +92,12 @@ Work phases in order; check items off as they land.
   enqueue; anything slow lives in the SQS worker. Slack retries un-acked
   events after 3s, which would double-process.
 - **Admin gating**: every config-mutating command (setup/address/emoji/
-  threshold/cap/size/presence/join-all) requires is_admin||is_owner, failing
-  closed. `here`/`leave`/`status`/`help` are deliberately open. Reactions
-  themselves stay democratic — threshold + daily cap are the spend fence.
+  threshold/cap/size/presence/join-all/off/on) requires is_admin||is_owner,
+  failing closed. `off`/`on` is the workspace-wide pause (`paused` flag,
+  absent = on) — gated in the listener (no enqueue) AND the worker (drops
+  jobs already in SQS); the tracker keeps running for mailed cards.
+  `here`/`leave`/`status`/`help` are deliberately open. Reactions themselves
+  stay democratic — threshold + daily cap are the spend fence.
 - **Presence is a config, not a constant** (`presence: everywhere|invited`,
   default `everywhere`). Slack only delivers reaction events for channels the
   bot is in, so "invited" mode fails *silently* in other channels — that's why

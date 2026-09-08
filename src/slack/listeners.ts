@@ -26,6 +26,7 @@ const HELP = [
   '`/postie here` / `/postie leave` — add/remove Postie in this channel',
   '`/postie presence <everywhere|invited>` — auto-join all public channels, or only invited ones (admins)',
   '`/postie join-all` — join every public channel now (admins)',
+  '`/postie off` / `/postie on` — pause all postcards workspace-wide, or resume (admins)',
   '',
   "_Postie only sees reactions in channels it's in — everywhere mode removes that footgun; invited mode is the privacy-friendly choice._",
 ].join('\n');
@@ -61,6 +62,10 @@ function registerReactionListener(app: App, deps: ListenerDeps): void {
       `[postie] reaction :${event.reaction}: in ${event.item.channel} (trigger=:${config.triggerEmoji}:, threshold=${config.threshold})`,
     );
     if (baseEmojiName(event.reaction) !== config.triggerEmoji) return;
+    if (config.paused) {
+      console.log('[postie] paused — ignoring trigger reaction');
+      return;
+    }
     // Cheap ack path: the worker re-reads the true count and holds the
     // exactly-once lock, so enqueueing on every trigger reaction is safe.
     await deps.queue.enqueue({
@@ -111,6 +116,7 @@ function registerCommand(app: App, deps: ListenerDeps): void {
         return reply(
           [
             '*Postie status*',
+            `• Power: ${config.paused ? ':zzz: *off* — reactions ignored until `/postie on`' : ':electric_plug: on'}`,
             `• Mailstream key: ${config.mailstreamApiKey ? ':lock: set' : '_not set — run `/postie setup`_'}`,
             `• Mode: ${isStubMode() ? ':test_tube: sandbox stub (no real mail)' : ':rocket: live'}`,
             `• Mail to: ${address}`,
@@ -219,6 +225,42 @@ function registerCommand(app: App, deps: ListenerDeps): void {
           mode === 'everywhere'
             ? ':earth_americas: Presence set to *everywhere* — run `/postie join-all` to backfill existing channels.'
             : ':door: Presence set to *invited* — Postie stays only where it was added. Reactions in other channels will do nothing (silently — Slack sends no events).',
+        );
+      }
+
+      // The kill switch: a workspace-wide pause. Admin-only because it's the
+      // same class as cap/threshold — a spend control, just an absolute one.
+      case 'off': {
+        if (!(await requireAdmin('turn Postie off'))) return;
+        const config = await deps.store.getTeamConfig(teamId);
+        if (config.paused) {
+          return reply(
+            ":pensive: Postie is already off. Still here. Still waiting. `/postie on` whenever you're ready.",
+          );
+        }
+        await deps.store.updateTeamConfig(teamId, { paused: true });
+        return reply(
+          [
+            ':cry: *Oh.* Okay. Postie is off.',
+            "I'll be right here, in the dark, not printing anything, thinking about all the postcards that could have been.",
+            `:${config.triggerEmoji}: reactions will be ignored until you run \`/postie on\`. Take your time. I'll wait. _(sniff)_`,
+          ].join('\n'),
+        );
+      }
+
+      case 'on': {
+        if (!(await requireAdmin('turn Postie on'))) return;
+        const config = await deps.store.getTeamConfig(teamId);
+        if (!config.paused) {
+          return reply(':blush: Postie is already on — and thrilled you checked.');
+        }
+        await deps.store.updateTeamConfig(teamId, { paused: undefined });
+        return reply(
+          [
+            ":tada: *I'M BACK!* Postie is on!",
+            `Dust off those :${config.triggerEmoji}: reactions — the printer is warm, the stamps are licked, and I have never been happier.`,
+            `${config.threshold} reactions and it's in the mail. Let's go.`,
+          ].join('\n'),
         );
       }
 

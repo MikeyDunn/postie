@@ -44,6 +44,10 @@ export async function processSendJob(job: SendJob, deps: PipelineDeps, attempt =
 
   const config = await store.getTeamConfig(teamId);
 
+  // `/postie off`: the listener stops enqueueing, but jobs already in SQS
+  // land here — drop them before spending a Slack call.
+  if (config.paused) return;
+
   // reactions.get returns both the live reaction counts AND the message body
   // in one call — count is re-read here rather than trusting the event stream.
   const reactionsRes = await slack.reactions.get({

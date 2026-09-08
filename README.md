@@ -115,6 +115,7 @@ out the idle recycle or nudge the functions (any redeploy works).
 - `/postie address` — where cards get mailed
 - `/postie status` — configuration, today's count, all-time total
 - `/postie threshold|cap|size|emoji|presence` — the knobs
+- `/postie off` / `/postie on` — pause all postcards workspace-wide (already-mailed cards keep tracking)
 
 Mailstream notes: cards cost print points (a 4×6 ≈ 0.9 points ≈ $0.90),
 charged at creation — top up in their dashboard first. Cards batch to a

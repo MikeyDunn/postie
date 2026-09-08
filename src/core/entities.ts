@@ -49,6 +49,7 @@ export const ConfigEntity = new Entity(
       dailyCap: { type: 'number' },
       size: { type: ['4x6', '6x9', '6x11'] as const },
       presence: { type: ['everywhere', 'invited'] as const },
+      paused: { type: 'boolean' },
     },
     indexes: {
       record: {

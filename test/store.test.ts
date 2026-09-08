@@ -44,6 +44,15 @@ describe('MemoryStore (contract shared with DynamoStore)', () => {
     expect((await store.getTeamConfig('T1')).ccAddress).toBeUndefined();
   });
 
+  it('pauses and resumes via the optional paused flag', async () => {
+    const store = new MemoryStore();
+    expect((await store.getTeamConfig('T1')).paused).toBeUndefined();
+    await store.updateTeamConfig('T1', { paused: true });
+    expect((await store.getTeamConfig('T1')).paused).toBe(true);
+    await store.updateTeamConfig('T1', { paused: undefined });
+    expect((await store.getTeamConfig('T1')).paused).toBeUndefined();
+  });
+
   it('tracks lifetime card totals through the number counter', async () => {
     const store = new MemoryStore();
     expect(await store.getCardTotal('T1')).toBe(0);
